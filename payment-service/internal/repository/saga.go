@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"example.com/strangler/internal/messageerror"
 	"example.com/strangler/internal/sagacontract"
 	"example.com/strangler/payment-service/internal/domain"
 )
@@ -29,7 +30,7 @@ func (r *SagaStore) Lock(ctx context.Context, tx *sql.Tx, m sagacontract.Message
 		return p, err
 	}
 	if p.SagaID != m.SagaID || p.AmountCents != m.Data.AmountCents || p.ProductID != m.Data.ProductID || p.Quantity != m.Data.Quantity || p.DemoFailure != m.Data.DemoFailure {
-		return p, errors.New("payment idempotency key conflict")
+		return p, messageerror.Permanent(errors.New("payment idempotency key conflict"))
 	}
 	return p, nil
 }

@@ -9,7 +9,9 @@ import (
 	"example.com/strangler/internal/bus"
 	"example.com/strangler/internal/config"
 	"example.com/strangler/internal/contract"
+	"example.com/strangler/internal/deadletter"
 	"example.com/strangler/internal/observability"
+	"example.com/strangler/internal/outbox"
 	"example.com/strangler/internal/postgres"
 	"example.com/strangler/internal/sagacontract"
 	"example.com/strangler/internal/sagaruntime"
@@ -64,7 +66,7 @@ func run() error {
 }
 
 func runSaga(ctx context.Context, cfg *config.Config, t *observability.Telemetry) error {
-	db, err := postgres.Open(ctx, cfg.String("DATABASE_URL", "postgres://payments:payments_demo@localhost:15432/payments?sslmode=disable"), repository.SagaSchema)
+	db, err := postgres.Open(ctx, cfg.String("DATABASE_URL", "postgres://payments:payments_demo@localhost:15432/payments?sslmode=disable"), repository.SagaSchema, outbox.Schema, deadletter.Schema)
 	if err != nil {
 		return err
 	}
@@ -74,7 +76,8 @@ func runSaga(ctx context.Context, cfg *config.Config, t *observability.Telemetry
 		return err
 	}
 	defer p.Close()
-	service := usecase.NewSaga(&repository.SagaStore{DB: db}, p, cfg.Bool("SAGA_DEMO_FAILURES", false))
+	messages := &outbox.Store{DB: db, Service: "payment-service"}
+	service := usecase.NewSaga(&repository.SagaStore{DB: db}, messages, cfg.Bool("SAGA_DEMO_FAILURES", false))
 	h := &delivery.SagaHandler{Service: service}
-	return sagaruntime.Serve(ctx, cfg, t, db, t.Router("payment-service"), cfg.String("PAYMENT_ADDR", ":8084"), sagacontract.PaymentCommands, "saga-payment-v1", h.Command)
+	return sagaruntime.Serve(ctx, cfg, t, db, t.Router("payment-service"), cfg.String("PAYMENT_ADDR", ":8084"), sagacontract.PaymentCommands, "saga-payment-v1", h.Command, p, messages)
 }

@@ -154,7 +154,7 @@ Saga и её историю. Payment сохраняет результат оп�
 **35–40 минут.** Откройте `order-service/internal/usecase/saga.go`:
 `Orchestrator.Create`, `Orchestrator.Handle`; затем
 `order-service/internal/domain/saga.go`: `Saga.Start`, `Saga.Apply`.
-Usecase управляет локальной транзакцией и публикацией. Домен определяет
+Usecase управляет локальной транзакцией и записью Outbox; relay публикует сообщения. Домен определяет
 переход и следующую команду; Kafka handler только декодирует DTO и делегирует.
 Оркестратор знает последовательность, участники знают только свои операции.
 
@@ -221,18 +221,18 @@ sequenceDiagram
     participant P as Payment
     participant S as Stock
     C->>O: POST /api/v1/orders (product_id=1)
-    O->>O: local commit: PENDING, PAYMENT_PENDING
-    O->>K: ChargePayment
+    O->>O: local commit: PENDING, PAYMENT_PENDING + Outbox
     O-->>C: 202 PENDING + saga_id
+    O->>K: relay: ChargePayment
     K->>P: ChargePayment
-    P->>P: local commit: CHARGED, charges=1, receipt
-    P->>K: PaymentCharged
+    P->>P: local commit: CHARGED, charges=1, receipt + Outbox
+    P->>K: relay: PaymentCharged
     K->>O: PaymentCharged
-    O->>O: local commit: STOCK_PENDING + receipt
-    O->>K: ReserveStock
+    O->>O: local commit: STOCK_PENDING + receipt + Outbox
+    O->>K: relay: ReserveStock
     K->>S: ReserveStock
-    S->>S: local commit: available-1, RESERVED, receipt
-    S->>K: StockReserved
+    S->>S: local commit: available-1, RESERVED, receipt + Outbox
+    S->>K: relay: StockReserved
     K->>O: StockReserved
     O->>O: local commit: COMPLETED, order CONFIRMED
     C->>O: GET /api/v1/orders/{id}
@@ -287,24 +287,24 @@ sequenceDiagram
     participant P as Payment
     participant S as Stock
     C->>O: POST /api/v1/orders (product_id=2)
-    O->>O: commit PENDING, PAYMENT_PENDING
-    O->>K: ChargePayment
+    O->>O: commit PENDING, PAYMENT_PENDING + Outbox
     O-->>C: 202 PENDING
+    O->>K: relay: ChargePayment
     K->>P: ChargePayment
-    P->>P: commit CHARGED, charges=1
-    P->>K: PaymentCharged
+    P->>P: commit CHARGED, charges=1 + Outbox
+    P->>K: relay: PaymentCharged
     K->>O: PaymentCharged
-    O->>O: commit STOCK_PENDING
-    O->>K: ReserveStock
+    O->>O: commit STOCK_PENDING + Outbox
+    O->>K: relay: ReserveStock
     K->>S: ReserveStock
-    S->>S: available=0; commit REJECTED, receipt
-    S->>K: StockReservationFailed
+    S->>S: available=0; commit REJECTED, receipt + Outbox
+    S->>K: relay: StockReservationFailed
     K->>O: StockReservationFailed
-    O->>O: commit COMPENSATING
-    O->>K: RefundPayment
+    O->>O: commit COMPENSATING + Outbox
+    O->>K: relay: RefundPayment
     K->>P: RefundPayment
-    P->>P: commit REFUNDED, refunds=1
-    P->>K: PaymentRefunded
+    P->>P: commit REFUNDED, refunds=1 + Outbox
+    P->>K: relay: PaymentRefunded
     K->>O: PaymentRefunded
     O->>O: commit CANCELLED, order CANCELLED
 ```
@@ -354,7 +354,7 @@ make saga-demo-duplicate
 Код: Order `SagaStore.Receipt` перед `Saga.Apply`, Payment `SagaStore.Result`,
 Stock `SagaStore.Result`; `scripts/saga_demo.py: duplicate, replay, verify`.
 Повтор может вызвать повторную отправку уже сохранённого решения, но участник
-вернёт кешированный результат. Это идемпотентность, а не exactly-once delivery.
+использует кешированный результат и прежний ID Outbox. Это идемпотентность, а не exactly-once delivery.
 
 ### 78–80 минут. Ошибка компенсации
 
@@ -376,31 +376,32 @@ make saga-demo-refund-failed
 2. Почему оркестратор знает порядок? Это владелец целого процесса оформления заказа.
 3. Чем Saga отличается от ACID-транзакции? Локальные commit уже видимы; общей изоляции нет.
 4. Почему возврат — не rollback? Это новая бизнес-операция со своим результатом и отказами.
-5. Сервис упал после БД, до Kafka — что дальше? Без повторной доставки/Outbox возможна остановка процесса.
+5. Сервис упал после БД, до Kafka — что дальше? Outbox сохранил намерение; relay продолжит после рестарта. Почему всё ещё возможны дубли?
 6. Зачем идемпотентность? Сбой подтверждения/публикации может привести к повтору уже выполненного действия.
 7. Когда choreography, когда orchestration? Независимые реакции против явной последовательности с компенсациями.
-8. Что оставлено для Outbox и Retry? Атомарное сохранение намерения отправить, relay, backoff, DLQ, таймауты и сверка зависших процессов.
+8. Что решают Outbox, Retry и DLQ? Надёжное намерение отправки, временные ошибки и изоляция плохих сообщений. Что остаётся для сверки зависших процессов?
 
 ## Транзакции и пределы надёжности
 
 Домен не импортирует SQL/Kafka/HTTP. Usecase начинает `*sql.Tx`, явно передаёт
 его репозиториям и вызывает commit. Kafka handler не содержит переходов.
 Дедупликация и бизнес-эффект хранятся в одной БД. Kafka offset подтверждается
-после commit и успешной публикации результата; ошибка повторяет тот же offset.
-Логика транспорта уже существовала в `internal/bus/kafka.go` и переиспользована.
+после commit бизнес-эффекта, receipt и исходящего сообщения Outbox.
+Фоновый relay в том же процессе отправляет намерения в Kafka, повторяет ошибки
+публикации с backoff и восстанавливается после рестарта. Сбой между publish и
+отметкой published_at даёт повтор, поэтому receipts остаются необходимыми.
 
-Результаты/решения кешируются для повторной публикации при redelivery.
-Это не полноценный Outbox: фонового relay нет. Остаётся разрыв DB commit →
-publish, особенно после первого HTTP POST, где нет входящего Kafka offset для
-восстановления. При такой аварии Saga может застрять; автоматического timeout,
-reconciliation и повторной отправки первой команды не реализовано.
-Эту границу нельзя выдавать за production-гарантию. Следующее занятие — Outbox.
+Постоянные ошибки сообщений отправляются в `<topic>.dlq`; технические ошибки
+handler повторяются до трёх записанных попыток. Карантин и исходящее DLQ-сообщение
+сохраняются одной транзакцией до подтверждения исходного offset. Если БД
+недоступна, offset удерживается. Бизнес-отказы — обычные события, не DLQ.
+Карантин результата может оставить конкретную Saga для ручного разбора.
 
-Технический сбой БД/Kafka возвращает ошибку и блокирует текущий offset до
-успешного повтора. Он не превращается в PaymentFailed/StockReservationFailed.
-Poison message/недопустимый переход тоже блокирует эту учебную партицию:
-инспектируют логи, исправляют причину или явно сбрасывают стенд. Полноценной
-политики Retry/DLQ нет. Один consumer обрабатывает последовательно.
+Дополнительные демонстрации: `make saga-demo-outbox`, `make saga-demo-dlq`.
+Первая показывает HTTP 202 при остановленной Kafka и завершение после рестарта.
+Вторая — исходное сообщение в DLQ, лимит технических повторов и следующий
+успешный заказ. Подробный разбор: [docs/RELIABILITY.md](docs/RELIABILITY.md).
+Их можно использовать после основного занятия или в рамках обсуждения.
 
 ## Проверки, повторение и учебные архивы
 
@@ -412,6 +413,7 @@ go vet ./...
 make saga-acceptance
 make saga-integration
 make saga-e2e
+make regression-strangler
 make saga-zip
 ```
 
@@ -420,7 +422,8 @@ Kafka и PostgreSQL. `saga_test.go` в доменах проверяют исх�
 недопустимые действия. Дополнительные integration-тесты usecase включаются
 через `make saga-integration` при работающем стенде. Они проверяют ошибку
 публикации после commit, повтор из нового экземпляра приложения и конкурентные
-дубли оплаты, используя PostgreSQL и простой fake producer.
+дубли оплаты. Также проверяется атомарность rollback бизнес-данных и Outbox,
+доставка relay и устойчивый DLQ. Используются изолированные SQL-схемы и fake producer.
 
 `dist/godelivery-saga.zip` — один полностью реализованный рабочий проект.
 Архив не содержит `.git`, `.env`, секретов, бинарников, `node_modules` и

@@ -122,6 +122,46 @@ func EnsureTopics(ctx context.Context, brokers []string, topics ...string) error
 // One message is fully processed and committed before fetching the next one.
 // A failed handler retries the SAME message; later offsets cannot skip it.
 func Consume(ctx context.Context, brokers []string, topic, group string, t *observability.Telemetry, handle func(context.Context, []byte) error) {
+	consume(ctx, brokers, topic, group, t, handle, nil)
+}
+
+type FailureDecision struct {
+	Quarantined bool
+	RetryAfter  time.Duration
+}
+type FailurePolicy interface {
+	IsQuarantined(context.Context, kafka.Message, string) (bool, error)
+	OnFailure(context.Context, kafka.Message, string, error) (FailureDecision, error)
+	OnSuccess(context.Context, kafka.Message, string) error
+}
+
+func handleDelivery(ctx context.Context, m kafka.Message, group string, handle func(context.Context, []byte) error, policy FailurePolicy) error {
+	if policy != nil {
+		quarantined, err := policy.IsQuarantined(ctx, m, group)
+		if err != nil {
+			return err
+		}
+		// A crash after quarantine commit but before Kafka commit must not run
+		// the rejected business operation again after a later code change.
+		if quarantined {
+			return nil
+		}
+	}
+	if err := handle(ctx, m.Value); err != nil {
+		return err
+	}
+	if policy != nil {
+		return policy.OnSuccess(ctx, m, group)
+	}
+	return nil
+}
+
+// ConsumeReliable commits a failed source offset only after durable quarantine.
+func ConsumeReliable(ctx context.Context, brokers []string, topic, group string, t *observability.Telemetry, handle func(context.Context, []byte) error, policy FailurePolicy) {
+	consume(ctx, brokers, topic, group, t, handle, policy)
+}
+
+func consume(ctx context.Context, brokers []string, topic, group string, t *observability.Telemetry, handle func(context.Context, []byte) error, policy FailurePolicy) {
 	reader := kafka.NewReader(kafka.ReaderConfig{Brokers: brokers, Topic: topic, GroupID: group, MinBytes: 1, MaxBytes: 1e6, MaxWait: time.Second, StartOffset: kafka.FirstOffset, CommitInterval: 0})
 	defer reader.Close()
 	for ctx.Err() == nil {
@@ -140,7 +180,7 @@ func Consume(ctx context.Context, brokers []string, topic, group string, t *obse
 			headers := Headers(message.Headers)
 			parent := otel.GetTextMapPropagator().Extract(ctx, &headers)
 			work, span := otel.Tracer("kafka").Start(parent, topic+" process", trace.WithSpanKind(trace.SpanKindConsumer), trace.WithAttributes(attribute.String("messaging.system", "kafka"), attribute.String("messaging.destination.name", topic)))
-			err = handle(work, message.Value)
+			err = handleDelivery(work, message, group, handle, policy)
 			outcome := "ok"
 			if err != nil {
 				outcome = "error"
@@ -152,6 +192,24 @@ func Consume(ctx context.Context, brokers []string, topic, group string, t *obse
 			span.End()
 			if err == nil {
 				break
+			}
+			if ctx.Err() != nil {
+				return
+			}
+			if policy != nil {
+				decision, recordErr := policy.OnFailure(work, message, group, err)
+				if recordErr == nil && decision.Quarantined {
+					break
+				}
+				delay := decision.RetryAfter
+				if recordErr != nil {
+					slog.Error("cannot persist delivery failure; offset retained", "error", recordErr)
+					delay = time.Second
+				}
+				if !pauseFor(ctx, delay) {
+					return
+				}
+				continue
 			}
 			// Invalid messages deliberately block this training consumer. Inspect
 			// the log and reset the lab; a production consumer needs a DLQ policy.
@@ -174,10 +232,14 @@ func Consume(ctx context.Context, brokers []string, topic, group string, t *obse
 }
 
 func pause(ctx context.Context) bool {
+	return pauseFor(ctx, time.Second)
+}
+
+func pauseFor(ctx context.Context, delay time.Duration) bool {
 	select {
 	case <-ctx.Done():
 		return false
-	case <-time.After(time.Second):
+	case <-time.After(delay):
 		return true
 	}
 }

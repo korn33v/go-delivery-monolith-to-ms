@@ -30,7 +30,7 @@ paths:
                   description: Only accepted when SAGA_DEMO_FAILURES=true
       responses:
         '202':
-          description: Saved locally; asynchronous process is in progress
+          description: Order and ChargePayment Outbox intent committed atomically; asynchronous process is in progress
           content:
             application/json:
               schema: {$ref: '#/components/schemas/Order'}
@@ -85,7 +85,7 @@ paths:
 components:
   responses:
     Error:
-      description: Validation, lookup or technical failure; a saved order is included when first publication is uncertain
+      description: Validation, lookup or local database/Outbox transaction failure
       content:
         application/json:
           schema:

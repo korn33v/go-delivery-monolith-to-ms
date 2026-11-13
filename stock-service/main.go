@@ -7,7 +7,9 @@ import (
 	"log/slog"
 
 	"example.com/strangler/internal/config"
+	"example.com/strangler/internal/deadletter"
 	"example.com/strangler/internal/observability"
+	"example.com/strangler/internal/outbox"
 	"example.com/strangler/internal/postgres"
 	"example.com/strangler/internal/sagacontract"
 	"example.com/strangler/internal/sagaruntime"
@@ -69,7 +71,7 @@ func run() error {
 }
 
 func runSaga(ctx context.Context, cfg *config.Config, t *observability.Telemetry) error {
-	db, err := postgres.Open(ctx, cfg.String("DATABASE_URL", "postgres://stock:stock_demo@localhost:15432/stock?sslmode=disable"), repository.SagaSchema)
+	db, err := postgres.Open(ctx, cfg.String("DATABASE_URL", "postgres://stock:stock_demo@localhost:15432/stock?sslmode=disable"), repository.SagaSchema, outbox.Schema, deadletter.Schema)
 	if err != nil {
 		return err
 	}
@@ -85,6 +87,7 @@ func runSaga(ctx context.Context, cfg *config.Config, t *observability.Telemetry
 	r.GET("/api/v1/stock/:id", h.Get)
 	r.POST("/api/v1/stock/reservations", h.Reserve)
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
-	kafkaHandler := &delivery.SagaHandler{Service: usecase.NewSaga(store, p)}
-	return sagaruntime.Serve(ctx, cfg, t, db, r, cfg.String("STOCK_ADDR", ":8082"), sagacontract.StockCommands, "saga-stock-v1", kafkaHandler.Command)
+	messages := &outbox.Store{DB: db, Service: "stock-service"}
+	kafkaHandler := &delivery.SagaHandler{Service: usecase.NewSaga(store, messages)}
+	return sagaruntime.Serve(ctx, cfg, t, db, r, cfg.String("STOCK_ADDR", ":8082"), sagacontract.StockCommands, "saga-stock-v1", kafkaHandler.Command, p, messages)
 }

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GoDelivery DLQ envelope v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "schema_version", "service", "consumer_group", "source_topic", "source_partition", "source_offset", "original_key", "original_value", "original_headers", "original_time", "attempts", "error", "reason", "failed_at"],
+  "properties": {
+    "id": {"type": "string"},
+    "schema_version": {"const": 1},
+    "service": {"type": "string"},
+    "consumer_group": {"type": "string"},
+    "source_topic": {"type": "string"},
+    "source_partition": {"type": "integer", "minimum": 0},
+    "source_offset": {"type": "integer", "minimum": 0},
+    "original_key": {"type": ["string", "null"], "contentEncoding": "base64"},
+    "original_value": {"type": ["string", "null"], "contentEncoding": "base64"},
+    "original_headers": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["key", "value"],
+        "properties": {"key": {"type": "string"}, "value": {"type": ["string", "null"], "contentEncoding": "base64"}}
+      }
+    },
+    "original_time": {"type": "string", "format": "date-time"},
+    "attempts": {"type": "integer", "minimum": 1},
+    "error": {"type": "string"},
+    "reason": {"enum": ["permanent_error", "retries_exhausted"]},
+    "failed_at": {"type": "string", "format": "date-time"}
+  }
+}

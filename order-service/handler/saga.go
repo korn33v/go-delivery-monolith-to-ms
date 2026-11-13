@@ -7,6 +7,7 @@ import (
 
 	"example.com/strangler/internal/contract"
 	"example.com/strangler/internal/httpapi"
+	"example.com/strangler/internal/messageerror"
 	"example.com/strangler/internal/sagacontract"
 	"example.com/strangler/order-service/internal/domain"
 	"example.com/strangler/order-service/internal/usecase"
@@ -77,7 +78,7 @@ func (h *SagaHandler) Get(c *gin.Context) {
 func (h *SagaHandler) Event(ctx context.Context, body []byte) error {
 	var event sagacontract.Message
 	if err := json.Unmarshal(body, &event); err != nil {
-		return err
+		return messageerror.Permanent(err)
 	}
 	return h.Service.Handle(ctx, event)
 }

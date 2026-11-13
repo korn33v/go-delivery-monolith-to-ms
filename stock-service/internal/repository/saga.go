@@ -8,6 +8,7 @@ import (
 	"errors"
 	"time"
 
+	"example.com/strangler/internal/messageerror"
 	"example.com/strangler/internal/sagacontract"
 	"example.com/strangler/stock-service/internal/domain"
 )
@@ -39,7 +40,7 @@ func (r *SagaStore) Result(ctx context.Context, tx *sql.Tx, m sagacontract.Messa
 		return event, false, err
 	}
 	if original.SagaID != m.SagaID || original.Data != m.Data {
-		return event, false, errors.New("stock idempotency key conflict")
+		return event, false, messageerror.Permanent(errors.New("stock idempotency key conflict"))
 	}
 	if _, err = tx.ExecContext(ctx, `UPDATE stock_receipts SET deliveries=deliveries+1 WHERE order_id=$1`, m.OrderID); err != nil {
 		return event, false, err

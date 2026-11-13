@@ -10,7 +10,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func Open(ctx context.Context, dsn, migration string) (*sql.DB, error) {
+func Open(ctx context.Context, dsn string, migrations ...string) (*sql.DB, error) {
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return nil, err
@@ -21,7 +21,7 @@ func Open(ctx context.Context, dsn, migration string) (*sql.DB, error) {
 	setup, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	if err = db.PingContext(setup); err == nil {
-		err = migrate(setup, db, migration)
+		err = migrate(setup, db, migrations)
 	}
 	if err != nil {
 		db.Close()
@@ -30,7 +30,7 @@ func Open(ctx context.Context, dsn, migration string) (*sql.DB, error) {
 	return db, nil
 }
 
-func migrate(ctx context.Context, db *sql.DB, migration string) error {
+func migrate(ctx context.Context, db *sql.DB, migrations []string) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -43,16 +43,19 @@ func migrate(ctx context.Context, db *sql.DB, migration string) error {
 	if _, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations(version int PRIMARY KEY)`); err != nil {
 		return err
 	}
-	var applied bool
-	if err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version=1)`).Scan(&applied); err != nil {
-		return err
-	}
-	if !applied {
-		if _, err = tx.ExecContext(ctx, migration); err != nil {
+	for i, migration := range migrations {
+		version := i + 1
+		var applied bool
+		if err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version=$1)`, version).Scan(&applied); err != nil {
 			return err
 		}
-		if _, err = tx.ExecContext(ctx, `INSERT INTO schema_migrations VALUES(1)`); err != nil {
-			return err
+		if !applied {
+			if _, err = tx.ExecContext(ctx, migration); err != nil {
+				return fmt.Errorf("migration %d: %w", version, err)
+			}
+			if _, err = tx.ExecContext(ctx, `INSERT INTO schema_migrations VALUES($1)`, version); err != nil {
+				return err
+			}
 		}
 	}
 	return tx.Commit()

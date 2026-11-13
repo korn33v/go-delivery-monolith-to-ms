@@ -6,6 +6,9 @@ Kafka и теми же Order/Payment/Stock запускается `make saga-up`
 Центральная демонстрация «оплата → отказ склада → возврат → отмена»:
 `make saga-demo-compensation`. Все E2E: `make saga-e2e`; ZIP рабочего проекта:
 `make saga-zip`. Kafka/API контракты: [docs/SAGA_CONTRACTS.md](docs/SAGA_CONTRACTS.md).
+Outbox и DLQ: [docs/RELIABILITY.md](docs/RELIABILITY.md),
+`make saga-demo-outbox`, `make saga-demo-dlq`. Регрессия четырёх этапов Strangler:
+`make regression-strangler` (временно останавливает Saga и затем восстанавливает её).
 Используйте один стенд за раз: порты Strangler и Saga совпадают.
 
 Учебная цель: заменить части монолита по одному маршруту, сохранив контракт
@@ -484,6 +487,10 @@ Gateway и React снова запустятся вместе с Compose. Дал
   несколько секунд. UI Jaeger работает на другом порту — 16686.
 
 ## Границы учебной модели
+
+Ниже описан исходный режим **Strangler Fig**, `SAGA_ENABLED=false`.
+В режиме Saga данные постоянны, а доставка использует Outbox и DLQ;
+его гарантии и ограничения описаны в [RELIABILITY.md](docs/RELIABILITY.md).
 
 Состояние приложений теряется при завершении процесса. Кеш обработанных
 платежей не переживает рестарт, сообщения могут доставляться повторно.

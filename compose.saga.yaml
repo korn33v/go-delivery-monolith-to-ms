@@ -3,6 +3,7 @@ name: godelivery-saga
 x-app-environment: &app-environment
   SAGA_ENABLED: "true"
   SAGA_DEMO_FAILURES: "${SAGA_DEMO_FAILURES:-true}"
+  SAGA_MAX_ATTEMPTS: "${SAGA_MAX_ATTEMPTS:-3}"
   KAFKA_BROKERS: kafka:9092
   OTEL_ENABLED: "false"
   ROUTE_STOCK_TO_MICROSERVICE: "true"
@@ -55,7 +56,7 @@ services:
     entrypoint: ["/bin/bash", "-ec"]
     command:
       - |
-        for topic in saga.payment.commands.v1 saga.stock.commands.v1 saga.events.v1; do
+        for topic in saga.payment.commands.v1 saga.stock.commands.v1 saga.events.v1 saga.payment.commands.v1.dlq saga.stock.commands.v1.dlq saga.events.v1.dlq; do
           /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic "$$topic" --partitions 1 --replication-factor 1
         done
 

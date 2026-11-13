@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"example.com/strangler/internal/messageerror"
 	"example.com/strangler/internal/sagacontract"
 	"example.com/strangler/order-service/internal/domain"
 )
@@ -67,7 +68,7 @@ func (r *SagaStore) Receipt(ctx context.Context, tx *sql.Tx, m sagacontract.Mess
 		return nil, false, err
 	}
 	if original.Data != m.Data || original.OrderID != m.OrderID {
-		return nil, false, errors.New("event identity conflict")
+		return nil, false, messageerror.Permanent(errors.New("event identity conflict"))
 	}
 	if _, err = tx.ExecContext(ctx, `UPDATE saga_receipts SET deliveries=deliveries+1 WHERE saga_id=$1 AND message_type=$2`, m.SagaID, m.Type); err != nil {
 		return nil, false, err

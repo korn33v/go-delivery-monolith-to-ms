@@ -16,7 +16,8 @@ API = os.getenv("SAGA_API", "http://localhost:8080")
 
 
 def command(args, **kwargs):
-    return subprocess.run(args, cwd=ROOT, check=True, text=True, timeout=90, **kwargs)
+    kwargs.setdefault("timeout", 90)
+    return subprocess.run(args, cwd=ROOT, check=True, text=True, **kwargs)
 
 
 def sql(database, query):

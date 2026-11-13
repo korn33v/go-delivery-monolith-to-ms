@@ -75,9 +75,22 @@ saga-demo-refund-failed:
 	python3 scripts/saga_demo.py refund-failed
 saga-e2e:
 	python3 scripts/saga_demo.py all
+	python3 scripts/saga_reliability.py all --no-start
 saga-acceptance:
 	go test ./order-service/internal/domain ./payment-service/internal/domain ./stock-service/internal/domain
 saga-integration:
-	go test -race -tags=saga_integration ./order-service/internal/usecase ./payment-service/internal/usecase
+	go test -race -tags=saga_integration ./internal/outbox ./internal/deadletter ./order-service/internal/usecase ./payment-service/internal/usecase ./stock-service/internal/usecase
 saga-zip:
 	python3 scripts/package_saga.py
+
+.PHONY: saga-demo-outbox saga-demo-dlq saga-reliability
+saga-demo-outbox:
+	python3 scripts/saga_reliability.py outbox
+saga-demo-dlq:
+	python3 scripts/saga_reliability.py dlq
+saga-reliability:
+	python3 scripts/saga_reliability.py all
+
+.PHONY: regression-strangler
+regression-strangler:
+	python3 scripts/strangler_regression.py
