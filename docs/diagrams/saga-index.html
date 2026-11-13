@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GoDelivery — Saga, Outbox и DLQ</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#101820;color:#e4edf5;font:16px/1.6 system-ui,sans-serif}
+    main{max-width:1500px;margin:auto;padding:28px}h1{margin:0 0 8px;font-size:30px}p{max-width:1000px}
+    nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:24px 0}
+    a{color:#8de7cc}nav a{padding:14px 18px;border:1px solid #3d596a;border-radius:10px;text-decoration:none;background:#1a2b36}
+    nav a[aria-current=true]{outline:2px solid #8de7cc}nav small{display:block;color:#b4c7d3}
+    iframe{display:block;width:100%;height:950px;background:white;border:1px solid #3d596a;border-radius:10px}
+    .controls{display:flex;justify-content:space-between;gap:16px;margin:12px 0;flex-wrap:wrap}
+    code{font-size:.9em}footer{margin-top:18px;color:#b4c7d3}@media(max-width:800px){nav{grid-template-columns:1fr 1fr}main{padding:16px}}
+  </style>
+</head>
+<body><main>
+  <h1>GoDelivery: Saga, Outbox и DLQ</h1>
+  <p>Контейнеры показывают всю систему; компоненты раскрывают Order Service.
+     Sequence объясняет возврат денег после отказа склада. ERD разделена по трём
+     независимым БД: каждая содержит собственные таблицы Outbox и DLQ.</p>
+  <nav aria-label="Диаграммы">
+    <a href="saga-containers.html" target="diagram" aria-current="true">Контейнерная диаграмма<small>Compose, Kafka, PostgreSQL и существующие сервисы</small></a>
+    <a href="saga-components.html" target="diagram">Компоненты Order Service<small>Usecase, домен, локальная транзакция, relay и DLQ</small></a>
+    <a href="saga-sequence.html" target="diagram">Sequence: компенсация<small>Оплата → отказ склада → возврат → отмена</small></a>
+    <a href="saga-erd-orders.html" target="diagram">ERD: orders<small>Заказы, Saga, история, receipts и доставка</small></a>
+    <a href="saga-erd-payments.html" target="diagram">ERD: payments<small>Списания, возвраты, receipts и доставка</small></a>
+    <a href="saga-erd-stock.html" target="diagram">ERD: stock<small>Товары, резервы, receipts и доставка</small></a>
+  </nav>
+  <div class="controls"><b id="selected">Контейнерная диаграмма</b><a id="separate" href="saga-containers.html" target="_blank" rel="noopener">Открыть отдельно ↗</a></div>
+  <iframe name="diagram" title="Выбранная интерактивная диаграмма GoDelivery" src="saga-containers.html"></iframe>
+  <footer>Схемы созданы Archify v3.2.0 по исходникам Git и фактическим схемам PostgreSQL.
+    Все шесть прошли автоматические проверки, включая Chrome.
+    <a href="README.md">Исходники и повторная генерация</a> · <a href="../../SEMINAR_GUIDE.md">Руководство семинара</a> · <a href="../RELIABILITY.md">Outbox и DLQ</a>.
+  </footer>
+</main><script>
+  for(const link of document.querySelectorAll('nav a'))link.addEventListener('click',()=>{
+    for(const other of document.querySelectorAll('nav a'))other.removeAttribute('aria-current');
+    link.setAttribute('aria-current','true');
+    document.getElementById('selected').textContent=link.firstChild.textContent;
+    document.getElementById('separate').href=link.getAttribute('href');
+  });
+</script></body></html>

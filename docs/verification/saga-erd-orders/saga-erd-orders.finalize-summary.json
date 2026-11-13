@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "erd",
+  "quality": "standard",
+  "specification": {
+    "path": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/sources/saga-erd-orders.json",
+    "sha256": "bd2a0538038450164ae90d43f2cc65637b5536aca0b642305e7914d432585f38",
+    "bytes": 50585
+  },
+  "artifact": {
+    "path": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/diagrams/saga-erd-orders.html",
+    "sha256": "003192051649892632f43600b0406fb40fbcc204451801e9235745eb2b6bbdf7",
+    "bytes": 867114
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "fail"
+  },
+  "failedStage": "browser-check",
+  "diagnostics": [
+    {
+      "code": "viewer/browser-check-runtime",
+      "severity": "error",
+      "message": "browser-check could not complete its Chrome inspection.",
+      "subject": {
+        "artifact": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/diagrams/saga-erd-orders.html"
+      },
+      "evidence": {
+        "reason": "Chrome DevTools read pipe failed: stream ended\nChrome process: still running.\nChrome transport: Node v26.12.1, libuv 1.53.0, darwin; pid=21247, exitCode=null, signalCode=null.\nChrome read pipe: readable=false, ended=true, destroyed=false, receivedBytes=0, messages=0, bufferedBytes=0.\nChrome write pipe: writable=true, ended=false, destroyed=false, completedWrites=1, writtenBytes=50, bufferedBytes=0."
+      },
+      "supportedFixes": [
+        "resolve the reported Chrome inspection error, then rerun browser-check"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/verification/saga-erd-orders/saga-erd-orders.finalize.json",
+    "summaryReceipt": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/verification/saga-erd-orders/saga-erd-orders.finalize-summary.json",
+    "browserCheckReceipt": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/verification/saga-erd-orders/saga-erd-orders.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 682,
+  "browserCheck": {
+    "requested": true,
+    "ran": false
+  }
+}

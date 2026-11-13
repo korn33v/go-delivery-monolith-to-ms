@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "browser-check",
+  "evidenceKind": "automated-browser",
+  "status": "fail",
+  "visualReview": "not-requested",
+  "provenance": "locked",
+  "artifact": {
+    "path": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/diagrams/saga-containers.html",
+    "sha256": "d136b552f6be331d3dca5116c6e38cecef0118264c466fdd71c9445172c24720",
+    "bytes": 845673
+  },
+  "error": "Delivery ownership is unresolved while the output lock remains; complete or recover delivery before trusting this artifact.",
+  "diagnostics": [
+    {
+      "code": "delivery/provenance-locked",
+      "severity": "error",
+      "message": "Delivery ownership is unresolved while the output lock remains; complete or recover delivery before trusting this artifact.",
+      "subject": {
+        "artifact": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/diagrams/saga-containers.html",
+        "lock": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/diagrams/.archify-delivery-lock.json"
+      },
+      "evidence": {
+        "deliveryLock": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/diagrams/.archify-delivery-lock.json",
+        "found": true
+      },
+      "supportedFixes": [
+        "finish the active delivery or inspect and recover the preserved lock, then rerun deliver successfully"
+      ]
+    }
+  ],
+  "containment": {
+    "status": "fail",
+    "policy": "fit-or-reader-declared-readable-vertical-scroll",
+    "viewports": []
+  },
+  "captures": {
+    "status": "not-requested",
+    "screenshots": [],
+    "contactSheet": null
+  },
+  "sidecars": {
+    "directory": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/verification/saga-containers",
+    "receipt": "saga-containers.browser-check.json",
+    "files": []
+  }
+}

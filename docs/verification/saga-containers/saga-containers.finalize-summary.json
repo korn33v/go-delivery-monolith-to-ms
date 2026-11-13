@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/sources/saga-containers.json",
+    "sha256": "75015be3b352db0f24e84dcb237cd033612f3a42d5d58d8819a6161e6bf433eb",
+    "bytes": 48890
+  },
+  "artifact": {
+    "path": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/diagrams/saga-containers.html",
+    "sha256": "d136b552f6be331d3dca5116c6e38cecef0118264c466fdd71c9445172c24720",
+    "bytes": 845673
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "fail"
+  },
+  "failedStage": "browser-check",
+  "diagnostics": [
+    {
+      "code": "delivery/provenance-locked",
+      "severity": "error",
+      "message": "Delivery ownership is unresolved while the output lock remains; complete or recover delivery before trusting this artifact.",
+      "subject": {
+        "artifact": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/diagrams/saga-containers.html",
+        "lock": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/diagrams/.archify-delivery-lock.json"
+      },
+      "evidence": {
+        "deliveryLock": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/diagrams/.archify-delivery-lock.json",
+        "found": true
+      },
+      "supportedFixes": [
+        "finish the active delivery or inspect and recover the preserved lock, then rerun deliver successfully"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/verification/saga-containers/saga-containers.finalize.json",
+    "summaryReceipt": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/verification/saga-containers/saga-containers.finalize-summary.json",
+    "browserCheckReceipt": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/verification/saga-containers/saga-containers.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1249,
+  "browserCheck": {
+    "requested": true,
+    "ran": false
+  }
+}

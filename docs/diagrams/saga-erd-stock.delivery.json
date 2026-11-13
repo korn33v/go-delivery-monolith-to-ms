@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "5e58bd58-bd30-4b02-a6e8-138d5bb73659",
+  "status": "current",
+  "command": "deliver",
+  "type": "erd",
+  "input": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/sources/saga-erd-stock.json",
+  "output": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/diagrams/saga-erd-stock.html",
+  "specification": {
+    "sha256": "57e78fbb8556d8ad9188d98cfa0097733350ae0c12b34a9cb322460db4c079df",
+    "bytes": 48564
+  },
+  "artifact": {
+    "sha256": "597d89f59be59add3890e17c551fd20584d5982c513baf21ef8e1708ddeef37d",
+    "bytes": 857547
+  }
+}

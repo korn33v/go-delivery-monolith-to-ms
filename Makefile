@@ -94,3 +94,8 @@ saga-reliability:
 .PHONY: regression-strangler
 regression-strangler:
 	python3 scripts/strangler_regression.py
+
+.PHONY: saga-diagrams
+saga-diagrams:
+	python3 scripts/generate_saga_diagrams.py
+	python3 scripts/render_saga_diagrams.py

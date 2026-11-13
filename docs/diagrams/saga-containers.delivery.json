@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "0d6818b1-9107-48f2-be25-0d088883fd0c",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/sources/saga-containers.json",
+  "output": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/diagrams/saga-containers.html",
+  "specification": {
+    "sha256": "75015be3b352db0f24e84dcb237cd033612f3a42d5d58d8819a6161e6bf433eb",
+    "bytes": 48890
+  },
+  "artifact": {
+    "sha256": "d136b552f6be331d3dca5116c6e38cecef0118264c466fdd71c9445172c24720",
+    "bytes": 845673
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/sources/saga-containers.json",
+    "sha256": "75015be3b352db0f24e84dcb237cd033612f3a42d5d58d8819a6161e6bf433eb",
+    "bytes": 48890
+  },
+  "artifact": {
+    "path": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/diagrams/saga-containers.html",
+    "sha256": "d136b552f6be331d3dca5116c6e38cecef0118264c466fdd71c9445172c24720",
+    "bytes": 845673
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/verification/saga-containers/run-1794592464456095000/saga-containers.finalize.json",
+    "summaryReceipt": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/verification/saga-containers/run-1794592464456095000/saga-containers.finalize-summary.json",
+    "browserCheckReceipt": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/verification/saga-containers/run-1794592464456095000/saga-containers.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1825,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  },
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "resolvedCrossovers": 1,
+      "routesOverSuggestedBends": 1
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [
+        {
+          "left": {
+            "id": "gateway-stock",
+            "from": "gateway",
+            "to": "stock",
+            "label": "stock read",
+            "collectionIndex": 3,
+            "artifactIndex": 4
+          },
+          "right": {
+            "id": "order-kafka",
+            "from": "order",
+            "to": "kafka",
+            "label": "produce / consume",
+            "collectionIndex": 4,
+            "artifactIndex": 5
+          },
+          "point": [
+            545.0666666666667,
+            530
+          ]
+        }
+      ],
+      "detours": [
+        {
+          "relationship": {
+            "id": "stock-kafka",
+            "from": "stock",
+            "to": "kafka",
+            "label": "produce / consume",
+            "collectionIndex": 5,
+            "artifactIndex": 6
+          },
+          "bends": 3,
+          "stretch": 1.205
+        }
+      ],
+      "truncated": false
+    },
+    "hints": [
+      "gateway → stock crosses order → kafka: move the node of whichever is a branch, return, or second entrance to the other side of the main path, so that relationship runs through an empty corridor.",
+      "stock → kafka needs 3 bends: move node stock or kafka so they share a row or column with matching centers, or sit diagonally with a clear corner."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}

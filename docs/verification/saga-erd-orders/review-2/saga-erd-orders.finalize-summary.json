@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "erd",
+  "quality": "standard",
+  "specification": {
+    "path": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/sources/saga-erd-orders.json",
+    "sha256": "bd2a0538038450164ae90d43f2cc65637b5536aca0b642305e7914d432585f38",
+    "bytes": 50585
+  },
+  "artifact": {
+    "path": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/diagrams/saga-erd-orders.html",
+    "sha256": "003192051649892632f43600b0406fb40fbcc204451801e9235745eb2b6bbdf7",
+    "bytes": 867114
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/verification/saga-erd-orders/review-2/saga-erd-orders.finalize.json",
+    "summaryReceipt": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/verification/saga-erd-orders/review-2/saga-erd-orders.finalize-summary.json",
+    "browserCheckReceipt": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/verification/saga-erd-orders/review-2/saga-erd-orders.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 2176,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  }
+}

@@ -31,6 +31,9 @@ Swagger: `http://localhost:8080/swagger/index.html` и `:8083/swagger/index.html
 Порты опубликованы только на loopback. Saga-стенд не запускает Jaeger/Grafana/
 Prometheus: для занятия достаточно JSON-логов и SQL.
 
+Интерактивные диаграммы Archify для показа на занятии:
+[контейнеры, компоненты, sequence и три ERD](docs/diagrams/saga-index.html).
+
 В одном терминале оставьте:
 
 ```bash

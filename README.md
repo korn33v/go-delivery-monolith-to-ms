@@ -9,6 +9,8 @@ Kafka и теми же Order/Payment/Stock запускается `make saga-up`
 Outbox и DLQ: [docs/RELIABILITY.md](docs/RELIABILITY.md),
 `make saga-demo-outbox`, `make saga-demo-dlq`. Регрессия четырёх этапов Strangler:
 `make regression-strangler` (временно останавливает Saga и затем восстанавливает её).
+Интерактивные ERD, контейнерная, компонентная и sequence-схемы Archify:
+[обзор диаграмм](docs/diagrams/saga-index.html).
 Используйте один стенд за раз: порты Strangler и Saga совпадают.
 
 Учебная цель: заменить части монолита по одному маршруту, сохранив контракт

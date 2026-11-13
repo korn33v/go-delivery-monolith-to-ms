@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "abcea90f-47ab-493c-b396-f16861025680",
+  "status": "current",
+  "command": "deliver",
+  "type": "erd",
+  "input": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/sources/saga-erd-orders.json",
+  "output": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/diagrams/saga-erd-orders.html",
+  "specification": {
+    "sha256": "bd2a0538038450164ae90d43f2cc65637b5536aca0b642305e7914d432585f38",
+    "bytes": 50585
+  },
+  "artifact": {
+    "sha256": "003192051649892632f43600b0406fb40fbcc204451801e9235745eb2b6bbdf7",
+    "bytes": 867114
+  }
+}

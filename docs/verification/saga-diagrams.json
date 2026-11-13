@@ -1,0 +1,60 @@
+{
+  "artifacts": [
+    {
+      "name": "saga-containers",
+      "status": "pass",
+      "profile": "showcase",
+      "html": "docs/diagrams/saga-containers.html",
+      "receipt": "docs/verification/saga-containers/run-1794592464456095000/saga-containers.finalize.json",
+      "revision": "6a9d1528eea523cf67388c7065ea4a4ee5734288",
+      "sha256": "d136b552f6be331d3dca5116c6e38cecef0118264c466fdd71c9445172c24720"
+    },
+    {
+      "name": "saga-components",
+      "status": "pass",
+      "profile": "showcase",
+      "html": "docs/diagrams/saga-components.html",
+      "receipt": "docs/verification/saga-components/run-1794592364059461000/saga-components.finalize.json",
+      "revision": "6a9d1528eea523cf67388c7065ea4a4ee5734288",
+      "sha256": "d19b0e981058f877b08ac11a816dd0ec34062e1d9a3049b68bfc583e26f097a3"
+    },
+    {
+      "name": "saga-sequence",
+      "status": "pass",
+      "profile": "showcase",
+      "html": "docs/diagrams/saga-sequence.html",
+      "receipt": "docs/verification/saga-sequence/run-1794592365923677000/saga-sequence.finalize.json",
+      "revision": "6a9d1528eea523cf67388c7065ea4a4ee5734288",
+      "sha256": "3bb81cc8778a87bffeedbbc62a440fbf2cda593a4d6bd78e0fc74801a8a545d0"
+    },
+    {
+      "name": "saga-erd-orders",
+      "status": "pass",
+      "profile": "standard",
+      "html": "docs/diagrams/saga-erd-orders.html",
+      "receipt": "docs/verification/saga-erd-orders/review-2/saga-erd-orders.finalize.json",
+      "revision": "6a9d1528eea523cf67388c7065ea4a4ee5734288",
+      "sha256": "003192051649892632f43600b0406fb40fbcc204451801e9235745eb2b6bbdf7"
+    },
+    {
+      "name": "saga-erd-payments",
+      "status": "pass",
+      "profile": "standard",
+      "html": "docs/diagrams/saga-erd-payments.html",
+      "receipt": "docs/verification/saga-erd-payments/run-1794592367673535000/saga-erd-payments.finalize.json",
+      "revision": "6a9d1528eea523cf67388c7065ea4a4ee5734288",
+      "sha256": "d7af15ff4601ab03ecae965de37344b37e40ffbcddbb98d7441120c2a2d5bb4f"
+    },
+    {
+      "name": "saga-erd-stock",
+      "status": "pass",
+      "profile": "standard",
+      "html": "docs/diagrams/saga-erd-stock.html",
+      "receipt": "docs/verification/saga-erd-stock/run-1794592369362282000/saga-erd-stock.finalize.json",
+      "revision": "6a9d1528eea523cf67388c7065ea4a4ee5734288",
+      "sha256": "597d89f59be59add3890e17c551fd20584d5982c513baf21ef8e1708ddeef37d"
+    }
+  ],
+  "checks": "validate, deliver, strict check, Chrome browser-check",
+  "perceptual_review": "container diagram reviewed at 1440x900 light; other diagrams checked automatically"
+}

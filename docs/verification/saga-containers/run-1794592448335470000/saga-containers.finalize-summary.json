@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/sources/saga-containers.json",
+    "sha256": "2159e2c4e51a87d14c9fb715e524809d382be21a0af3265c8f03d77df63b7e1a",
+    "bytes": 48889
+  },
+  "artifact": {
+    "path": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/diagrams/saga-containers.html",
+    "sha256": "d136b552f6be331d3dca5116c6e38cecef0118264c466fdd71c9445172c24720",
+    "bytes": 845673
+  },
+  "gates": {
+    "validate": "fail",
+    "deliver": "not-run",
+    "check": "not-run",
+    "browser-check": "not-run"
+  },
+  "failedStage": "validate",
+  "diagnostics": [
+    {
+      "code": "composition/label-route-clearance",
+      "severity": "error",
+      "message": "[composition/label-route-clearance] showcase architecture label \"orders\" on connections[2] id \"gateway-order\" \"gateway\" -> \"order\" label \"orders\" is 0px from connections[5] id \"stock-kafka\" \"stock\" -> \"kafka\" label \"produce / consume\" segment 2 [537, 198] -> [537, 476] (label rect [526, 254, 39, 14]; minimum 4px) — adjust labelAt, labelDx, labelDy, or labelSegment; otherwise adjust the other relationship route/via/channel.",
+      "subject": {
+        "diagramType": "architecture",
+        "collection": "connections",
+        "index": 2,
+        "id": "gateway-order",
+        "from": "gateway",
+        "to": "order"
+      },
+      "evidence": {
+        "label": "orders",
+        "otherRelationship": {
+          "diagramType": "architecture",
+          "collection": "connections",
+          "index": 5,
+          "id": "stock-kafka",
+          "from": "stock",
+          "to": "kafka"
+        },
+        "segmentIndex": 2,
+        "clearancePx": 0,
+        "minimumPx": 4,
+        "labelRect": {
+          "relation": {
+            "id": "gateway-order",
+            "from": "gateway",
+            "to": "order",
+            "label": "orders",
+            "variant": "emphasis"
+          },
+          "relationIndex": 2,
+          "label": "orders",
+          "x": 525.6,
+          "y": 254,
+          "width": 38.8,
+          "height": 14,
+          "lx": 545,
+          "ly": 264
+        },
+        "from": [
+          537,
+          198
+        ],
+        "to": [
+          537,
+          476
+        ]
+      },
+      "supportedFixes": [
+        "adjust labelAt, labelDx, labelDy, or labelSegment; otherwise adjust the other relationship route/via/channel"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/verification/saga-containers/run-1794592448335470000/saga-containers.finalize.json",
+    "summaryReceipt": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/verification/saga-containers/run-1794592448335470000/saga-containers.finalize-summary.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 259,
+  "browserCheck": {
+    "requested": true,
+    "ran": false
+  },
+  "nextAction": {
+    "action": "edit-in-place",
+    "candidate": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/sources/saga-containers.json",
+    "constraint": "Preserve unaffected semantics and geometry; apply each diagnostic's supportedFixes, or the fix its message names, and do not replace the whole candidate.",
+    "then": "finalize-once"
+  }
+}

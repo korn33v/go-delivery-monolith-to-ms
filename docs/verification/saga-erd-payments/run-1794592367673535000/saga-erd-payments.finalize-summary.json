@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "erd",
+  "quality": "standard",
+  "specification": {
+    "path": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/sources/saga-erd-payments.json",
+    "sha256": "bba5ce92708574b1263578ac68f0cbf1b625d4b1ac275c921419f2c79b550439",
+    "bytes": 48833
+  },
+  "artifact": {
+    "path": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/diagrams/saga-erd-payments.html",
+    "sha256": "d7af15ff4601ab03ecae965de37344b37e40ffbcddbb98d7441120c2a2d5bb4f",
+    "bytes": 858811
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/verification/saga-erd-payments/run-1794592367673535000/saga-erd-payments.finalize.json",
+    "summaryReceipt": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/verification/saga-erd-payments/run-1794592367673535000/saga-erd-payments.finalize-summary.json",
+    "browserCheckReceipt": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/verification/saga-erd-payments/run-1794592367673535000/saga-erd-payments.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1601,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  }
+}

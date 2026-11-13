@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "4e5d431d-5e15-419d-b8db-4946de9f6771",
+  "status": "current",
+  "command": "deliver",
+  "type": "sequence",
+  "input": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/sources/saga-sequence.json",
+  "output": "/Users/i.a.korneev/hse/go-delivery-monolith-to-ms/docs/diagrams/saga-sequence.html",
+  "specification": {
+    "sha256": "b18d1f2a0a698898aaf5148fcf09cf4a95e659d884e4ea3e5bfd57165e76444b",
+    "bytes": 47139
+  },
+  "artifact": {
+    "sha256": "3bb81cc8778a87bffeedbbc62a440fbf2cda593a4d6bd78e0fc74801a8a545d0",
+    "bytes": 834684
+  }
+}
