@@ -1,5 +1,83 @@
 # GoDelivery: миграция монолита по Strangler Fig
 
+## Быстрый запуск всех контейнеров приложения
+
+Для полного запуска **Saga, Outbox и DLQ** нужны Docker Engine/Desktop с
+Docker Compose v2, запущенный Docker daemon и около 4 ГБ памяти для Docker.
+На Windows используйте Docker Desktop с WSL2. При первой сборке нужен интернет
+для загрузки образов и зависимостей. Go, Node.js и npm на хосте не требуются;
+создавать `.env` для этого режима тоже не нужно.
+
+Откройте терминал в корне проекта, где находится `compose.saga.yaml`, и выполните:
+
+```bash
+docker compose -f compose.saga.yaml up -d --build --wait --wait-timeout 240
+```
+
+Эквивалентная команда при установленном `make`: `make saga-up`.
+Compose соберёт приложения, запустит PostgreSQL и Kafka, создаст топики и DLQ,
+применит миграции трёх БД и добавит демонстрационные товары. Затем запустятся
+Order, Payment, Stock, API Gateway и React в Nginx. Команда дождётся готовности
+контейнеров по healthcheck; вручную запускать Go-процессы или создавать БД не нужно.
+
+Если прежний стенд Strangler уже работает, сначала выполните `docker compose down`
+и остановите его локальные Go-процессы через Ctrl+C: оба стенда используют одни
+порты. В полностью контейнерном режиме используются:
+
+| Компонент | Адрес |
+|---|---|
+| React — интерфейс приложения | http://localhost:5173 |
+| API Gateway — Swagger UI | http://localhost:8080/swagger/index.html |
+| Order — готовность БД сервиса | http://localhost:8083/ready |
+| Stock — готовность БД сервиса | http://localhost:8082/ready |
+| Payment — готовность БД сервиса | http://localhost:8084/ready |
+| PostgreSQL — БД `orders`, `payments`, `stock` | `localhost:15432` |
+| Kafka — адрес для инструментов на хосте | `localhost:19092` |
+
+Проверьте состояние контейнеров и откройте React в браузере:
+
+```bash
+docker compose -f compose.saga.yaml ps -a
+```
+
+Семь постоянно работающих контейнеров должны иметь статус `healthy`.
+Восьмой, `kafka-init`, завершается с кодом `0` после создания топиков — это
+ожидаемый результат. В React нажмите «Оформить заказ»: заказ должен перейти
+в `CONFIRMED`, а Saga — в `COMPLETED`.
+
+Для демонстрации компенсации дополнительно потребуется Python 3.9+:
+
+```bash
+python3 scripts/saga_demo.py compensation
+```
+
+Сценарий проверяет цепочку «оплата → отказ склада → возврат → отмена»
+и завершается `SUCCESS compensation`. При установленном `make` доступны
+`make saga-demo-compensation` и все E2E-сценарии: `make saga-e2e`.
+
+Логи, остановка и повторный запуск:
+
+```bash
+docker compose -f compose.saga.yaml logs -f --tail=100 order-service payment-service stock-service gateway
+docker compose -f compose.saga.yaml down
+docker compose -f compose.saga.yaml up -d --build --wait --wait-timeout 240
+```
+
+`down` сохраняет заказы, платежи, остатки и Kafka в Docker volumes. Для полного
+сброса учебных данных используйте `make saga-reset` или
+`docker compose -f compose.saga.yaml down -v`: **эти команды удаляют данные Saga**.
+После сброса повторите команду запуска.
+
+Если запуск завершился ошибкой, проверьте `docker info`, доступность указанных
+портов и логи: `docker compose -f compose.saga.yaml logs --tail=100`.
+Подробности сценариев и диагностики — в [SEMINAR_GUIDE.md](SEMINAR_GUIDE.md).
+
+## Учебные материалы и исходный стенд Strangler Fig
+
+Далее сохранены инструкции предыдущего семинара с поэтапным выделением сервисов
+и конфигурацией `docker-compose.yaml`. Для запуска всех сервисов в контейнерах
+используйте быстрый старт выше с `compose.saga.yaml`.
+
 Продолжение курса: **EDA и Orchestrated Saga (90 минут)** —
 [SEMINAR_GUIDE.md](SEMINAR_GUIDE.md). Полностью контейнерный стенд с PostgreSQL,
 Kafka и теми же Order/Payment/Stock запускается `make saga-up` без `.env`.
