@@ -5,7 +5,8 @@ x-app-environment: &app-environment
   SAGA_DEMO_FAILURES: "${SAGA_DEMO_FAILURES:-true}"
   SAGA_MAX_ATTEMPTS: "${SAGA_MAX_ATTEMPTS:-3}"
   KAFKA_BROKERS: kafka:9092
-  OTEL_ENABLED: "false"
+  OTEL_ENABLED: "true"
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
   ROUTE_STOCK_TO_MICROSERVICE: "true"
   ROUTE_ORDER_TO_MICROSERVICE: "true"
   ASYNC_PAYMENT_ACTIVE: "true"
@@ -20,6 +21,14 @@ x-app: &app
       condition: service_completed_successfully
 
 services:
+  jaeger:
+    image: jaegertracing/all-in-one:1.76.0
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "127.0.0.1:16686:16686"
+      - "127.0.0.1:4318:4318"
+
   kafka:
     image: apache/kafka:3.9.1
     hostname: kafka

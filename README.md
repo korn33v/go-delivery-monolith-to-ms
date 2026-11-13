@@ -28,6 +28,7 @@ Order, Payment, Stock, API Gateway и React в Nginx. Команда дождё�
 |---|---|
 | React — интерфейс приложения | http://localhost:5173 |
 | API Gateway — Swagger UI | http://localhost:8080/swagger/index.html |
+| Jaeger — просмотр трасс | http://localhost:16686 |
 | Order — готовность БД сервиса | http://localhost:8083/ready |
 | Stock — готовность БД сервиса | http://localhost:8082/ready |
 | Payment — готовность БД сервиса | http://localhost:8084/ready |
@@ -40,10 +41,14 @@ Order, Payment, Stock, API Gateway и React в Nginx. Команда дождё�
 docker compose -f compose.saga.yaml ps -a
 ```
 
-Семь постоянно работающих контейнеров должны иметь статус `healthy`.
-Восьмой, `kafka-init`, завершается с кодом `0` после создания топиков — это
+Семь основных контейнеров должны иметь статус `healthy`, Jaeger — `running`.
+Однократный `kafka-init` завершается с кодом `0` после создания топиков — это
 ожидаемый результат. В React нажмите «Оформить заказ»: заказ должен перейти
 в `CONFIRMED`, а Saga — в `COMPLETED`.
+Ссылка «Посмотреть трассу в Jaeger» открывает трассу этой покупки. Экспорт
+выполняется асинхронно: при необходимости обновите страницу Jaeger через несколько секунд.
+Проверка ссылки и сквозной трассы: `make saga-trace-check` (требуется Python 3.9+).
+Учебный Jaeger хранит трассы в памяти: после его пересоздания старые трассы исчезают.
 
 Для демонстрации компенсации дополнительно потребуется Python 3.9+:
 

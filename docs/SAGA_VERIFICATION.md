@@ -38,6 +38,8 @@ production-сборку React/Vite в Nginx. В проекте один полн
 | Все Kafka/PostgreSQL E2E из этого ZIP после удаления учебных volumes | PASS |
 | Живые Strangler этапы 1, 2, 3, 4 с проверкой остатков и одной Jaeger-трассы | PASS |
 | Шесть Archify HTML: validation, delivery, strict check, Chrome browser-check | PASS |
+| Gateway возвращает один X-Trace-ID при наличии trace headers у upstream | PASS |
+| `make saga-trace-check`: новая трасса компенсации доступна в Jaeger и содержит четыре сервиса | PASS |
 
 Интеграционные тесты используют изолированные SQL-схемы и fake producer для
 воспроизведения сбоя публикации. E2E использует реальные Kafka producer,
@@ -77,3 +79,8 @@ HTML, JSON и ссылок на passing receipts: [saga-diagrams.json](verificat
 Ограничения проверок: React собран контейнером; отдельной автоматизации кликов
 в React нет. At-least-once остаётся: сбой после publish, до локальной отметки
 даёт повтор, а бизнес-эффекты защищены receipts. Детали: [RELIABILITY.md](RELIABILITY.md).
+
+Исправление ссылки Jaeger проверено дополнительно через реальные HTTP endpoints:
+Saga Compose запускает Jaeger и экспортирует OTel на `http://jaeger:4318`.
+Gateway удаляет upstream-заголовок `X-Trace-ID`, сохраняя собственный одиночный ID.
+`go test -race ./gateway/...`, `go vet ./gateway/...` и `go test ./...` прошли.

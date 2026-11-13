@@ -76,6 +76,11 @@ saga-demo-refund-failed:
 saga-e2e:
 	python3 scripts/saga_demo.py all
 	python3 scripts/saga_reliability.py all --no-start
+	python3 scripts/saga_trace_check.py
+
+.PHONY: saga-trace-check
+saga-trace-check:
+	python3 scripts/saga_trace_check.py
 saga-acceptance:
 	go test ./order-service/internal/domain ./payment-service/internal/domain ./stock-service/internal/domain
 saga-integration:

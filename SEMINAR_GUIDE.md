@@ -28,8 +28,9 @@ make saga-e2e
 Адреса: React `http://localhost:5173`, Gateway `:8080`, Stock `:8082`, Order
 `:8083`, Payment `:8084`, PostgreSQL `localhost:15432`, Kafka `localhost:19092`.
 Swagger: `http://localhost:8080/swagger/index.html` и `:8083/swagger/index.html`.
-Порты опубликованы только на loopback. Saga-стенд не запускает Jaeger/Grafana/
-Prometheus: для занятия достаточно JSON-логов и SQL.
+Порты опубликованы только на loopback. Jaeger доступен на `http://localhost:16686`,
+экспорт OTel включён; ссылка из React открывает трассу покупки. Grafana и
+Prometheus в Saga-стенде не запускаются.
 
 Интерактивные диаграммы Archify для показа на занятии:
 [контейнеры, компоненты, sequence и три ERD](docs/diagrams/saga-index.html).

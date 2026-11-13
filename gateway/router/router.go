@@ -33,6 +33,12 @@ func proxy(address string) (*httputil.ReverseProxy, error) {
 	p := &httputil.ReverseProxy{
 		Rewrite:   func(r *httputil.ProxyRequest) { r.SetURL(target); r.SetXForwarded() },
 		Transport: otelhttp.NewTransport(transport),
+		// Gateway middleware already sets this header. ReverseProxy appends
+		// upstream values, which would turn one trace ID into a comma list.
+		ModifyResponse: func(response *http.Response) error {
+			response.Header.Del("X-Trace-ID")
+			return nil
+		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			slog.Error("upstream unavailable", "target", address, "error", err)
 			w.Header().Set("Content-Type", "application/json")
