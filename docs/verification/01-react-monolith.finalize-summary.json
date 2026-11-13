@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "skipped",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/sources/01-react-monolith.json",
+    "sha256": "a3019e33ee5a19e237cf47bbfeb0ced6b0da1f597b866ecdf1ca078cb1f4afdf",
+    "bytes": 42351
+  },
+  "artifact": {
+    "path": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/01-react-monolith.html",
+    "sha256": "fe2c6c2034b543806ddf0f76558fd9c0ae2646e1c9588b2d5f20f36091eacc88",
+    "bytes": 824619
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "skipped"
+  },
+  "failedStage": "browser-check",
+  "diagnostics": [
+    {
+      "code": "viewer/chrome-unavailable",
+      "severity": "warning",
+      "message": "No supported browser found. Install Chrome/Chromium (or Microsoft Edge), or set ARCHIFY_CHROME to its executable path.",
+      "subject": {
+        "artifact": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/01-react-monolith.html"
+      },
+      "evidence": {
+        "executable": null
+      },
+      "supportedFixes": [
+        "set ARCHIFY_CHROME to a Chrome/Chromium executable (or Microsoft Edge) and rerun browser-check"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/01-react-monolith.finalize.json",
+    "summaryReceipt": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/01-react-monolith.finalize-summary.json",
+    "browserCheckReceipt": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/01-react-monolith.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 675,
+  "browserCheck": {
+    "requested": true,
+    "ran": false
+  }
+}

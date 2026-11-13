@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "b29487ed-ff0d-4a18-97d9-3e7acca7c74f",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/sources/03-stock-service.json",
+  "output": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/03-stock-service.html",
+  "specification": {
+    "sha256": "7e3d676f4db3b6fe6265dbe085d3f392ae3e2081addc5d7dbe1a2f4e4dbe6974",
+    "bytes": 43998
+  },
+  "artifact": {
+    "sha256": "b590e62bf800d59fd48b1e09765d8e46b0f94ec63efec1a70ab4312f587876f3",
+    "bytes": 829017
+  }
+}

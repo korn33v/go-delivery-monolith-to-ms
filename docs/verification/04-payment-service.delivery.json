@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "463969cb-bcf5-425b-abc4-b9e65bf35ec1",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/sources/04-payment-service.json",
+  "output": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/04-payment-service.html",
+  "specification": {
+    "sha256": "7eafae992baa6d2e46f1835a09d96b80a0fb98b123ce8c904f7b5897b301e6ae",
+    "bytes": 45841
+  },
+  "artifact": {
+    "sha256": "e94002ac993af9a4ea2df4eb30b7390ace6bb31349afc43c475794aba5529017",
+    "bytes": 837299
+  }
+}

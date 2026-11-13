@@ -1,0 +1,4 @@
+frontend
+bin
+*.log
+.git

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "9f80d2a5-e655-4f7d-8026-8716eeb8e762",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/sources/02-gateway.json",
+  "output": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/02-gateway.html",
+  "specification": {
+    "sha256": "5ecdb37afd6378c3a55b4d4959cd084457af01189ac691dbae38ee92ba1ac5af",
+    "bytes": 42797
+  },
+  "artifact": {
+    "sha256": "614b22c8d4c36fd81127e074a58a822092e0096856cbe4955c8c9f4c7bac12c8",
+    "bytes": 824664
+  }
+}

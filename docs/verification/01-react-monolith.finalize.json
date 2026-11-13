@@ -1,0 +1,423 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "skipped",
+  "type": "architecture",
+  "quality": "showcase",
+  "startedAt": "2026-10-23T17:22:17.298Z",
+  "specification": {
+    "path": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/sources/01-react-monolith.json",
+    "sha256": "a3019e33ee5a19e237cf47bbfeb0ced6b0da1f597b866ecdf1ca078cb1f4afdf",
+    "bytes": 42351
+  },
+  "artifact": {
+    "path": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/01-react-monolith.html",
+    "sha256": "fe2c6c2034b543806ddf0f76558fd9c0ae2646e1c9588b2d5f20f36091eacc88",
+    "bytes": 824619
+  },
+  "stages": {
+    "validate": {
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": null,
+      "execution": "embedded-in-deliver",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "/workspace/scratch/cb8e3b3519a8/archify-skill/archify/bin/archify.mjs",
+        "deliver",
+        "architecture",
+        "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/sources/01-react-monolith.json",
+        "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/01-react-monolith.html",
+        "--quality",
+        "showcase",
+        "--json"
+      ],
+      "receipt": {
+        "schemaVersion": 1,
+        "ok": true,
+        "command": "validate",
+        "specification": {
+          "sha256": "a3019e33ee5a19e237cf47bbfeb0ced6b0da1f597b866ecdf1ca078cb1f4afdf",
+          "bytes": 42351
+        },
+        "validation": {
+          "checksPassed": 9,
+          "checkCount": 9,
+          "compositionProfile": "showcase",
+          "compositionStatus": "pass",
+          "errors": 0,
+          "warnings": 0
+        }
+      }
+    },
+    "deliver": {
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": 390,
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "/workspace/scratch/cb8e3b3519a8/archify-skill/archify/bin/archify.mjs",
+        "deliver",
+        "architecture",
+        "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/sources/01-react-monolith.json",
+        "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/01-react-monolith.html",
+        "--quality",
+        "showcase",
+        "--json"
+      ],
+      "receipt": {
+        "schemaVersion": 1,
+        "receiptId": "780977f5-bb9c-4818-9f0c-69163c8c8de3",
+        "ok": true,
+        "command": "deliver",
+        "type": "architecture",
+        "input": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/sources/01-react-monolith.json",
+        "output": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/01-react-monolith.html",
+        "specification": {
+          "sha256": "a3019e33ee5a19e237cf47bbfeb0ced6b0da1f597b866ecdf1ca078cb1f4afdf",
+          "bytes": 42351
+        },
+        "artifact": {
+          "sha256": "fe2c6c2034b543806ddf0f76558fd9c0ae2646e1c9588b2d5f20f36091eacc88",
+          "bytes": 824619
+        },
+        "validation": {
+          "checksPassed": 9,
+          "checkCount": 9,
+          "compositionProfile": "showcase",
+          "compositionStatus": "pass",
+          "errors": 0,
+          "warnings": 0
+        },
+        "diagnostics": [
+          {
+            "code": "i18n/translation-coverage",
+            "severity": "warning",
+            "message": "meta.locale \"ru\" resolves 461/486 renderer-owned messages (94%) from 461 meta.translations entries; 25 fall back to English.",
+            "subject": {
+              "diagramType": "architecture",
+              "path": "/meta/translations"
+            },
+            "evidence": {
+              "locale": "ru",
+              "resolvedLocale": "ru",
+              "bundledLocale": null,
+              "translatedKeys": 461,
+              "totalKeys": 486,
+              "appliedOverrideKeys": 461,
+              "missingKeys": [
+                "viewer.export.svg.auto",
+                "viewer.export.svg.auto.hint",
+                "viewer.export.svg.light",
+                "viewer.export.svg.light.hint",
+                "viewer.export.svg.dark",
+                "viewer.export.svg.dark.hint",
+                "viewer.guide.title",
+                "viewer.focus.selectedNodes",
+                "viewer.guide.credit",
+                "viewer.guide.star"
+              ],
+              "missingKeysTotal": 25,
+              "englishSource": {
+                "viewer.export.svg.auto": "SVG · Auto",
+                "viewer.export.svg.auto.hint": "Matches host theme",
+                "viewer.export.svg.light": "SVG · Light",
+                "viewer.export.svg.light.hint": "Always light",
+                "viewer.export.svg.dark": "SVG · Dark",
+                "viewer.export.svg.dark.hint": "Always dark",
+                "viewer.guide.title": "Explore this system",
+                "viewer.focus.selectedNodes": "{count} selected nodes",
+                "viewer.guide.credit": "Find Archify useful? A star on GitHub helps",
+                "viewer.guide.star": "Star"
+              }
+            },
+            "supportedFixes": [
+              "Add each missing key to meta.translations, translating its English source string and keeping its {placeholders}."
+            ]
+          }
+        ],
+        "update": {
+          "status": "unavailable",
+          "installedVersion": null,
+          "availableVersion": null,
+          "releaseNotes": null,
+          "checkedAt": null,
+          "source": null,
+          "noticeRequired": false,
+          "noticeText": null,
+          "reason": "disabled"
+        }
+      },
+      "stderr": "archify: meta.locale \"ru\" resolves 461/486 renderer-owned messages (94%) from 461 meta.translations entries; 25 fall back to English."
+    },
+    "check": {
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": 195,
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "/workspace/scratch/cb8e3b3519a8/archify-skill/archify/bin/archify.mjs",
+        "check",
+        "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/01-react-monolith.html",
+        "--require-provenance"
+      ],
+      "receipt": {
+        "ok": true,
+        "file": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/01-react-monolith.html",
+        "artifact": {
+          "sha256": "fe2c6c2034b543806ddf0f76558fd9c0ae2646e1c9588b2d5f20f36091eacc88",
+          "bytes": 824619
+        },
+        "checks": [
+          {
+            "name": "single_svg",
+            "ok": true,
+            "details": [
+              "found 1 <svg> block(s)"
+            ]
+          },
+          {
+            "name": "finite_svg",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "orthogonal_arrows",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "label_route_clearance",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "relationship_crossings",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "relationship_corridors",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "container_border_runs",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "route_rhythm",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "legend_clearance",
+            "ok": true,
+            "details": []
+          }
+        ],
+        "composition": {
+          "schemaVersion": 1,
+          "profile": "showcase",
+          "status": "pass",
+          "summary": {
+            "errors": 0,
+            "warnings": 0
+          },
+          "metrics": {
+            "properCrossings": 0,
+            "resolvedCrossovers": 0,
+            "ambiguousCorridors": 0,
+            "arrowheadCollisions": 0,
+            "containerBorderRuns": 0,
+            "labelRouteClearanceIssues": 0,
+            "labelCanvasOverflowIssues": 0,
+            "minLabelRouteClearance": 98.7,
+            "desktopReadabilityIssues": 0,
+            "viewportHeightIssues": 0,
+            "minProjectedNodeTextPx": 8,
+            "maxBends": 0,
+            "routesOverSuggestedBends": 0,
+            "maxStretch": 1,
+            "routesOverSuggestedStretch": 0,
+            "minSegmentPx": 134,
+            "minInteriorSegmentPx": null,
+            "shortSegmentCount": 0,
+            "shortEndpointSegmentCount": 0,
+            "shortInteriorSegmentCount": 0,
+            "microSegmentCount": 0
+          },
+          "suggestedLimits": {
+            "bendsPerRelationship": 2,
+            "stretch": 1.35,
+            "segmentPx": 16,
+            "microSegmentPx": 8
+          },
+          "routeReview": {
+            "crossings": [],
+            "detours": []
+          },
+          "leadingSpace": {
+            "measured": true,
+            "emptyTopPx": 40,
+            "emptyTopRatio": 0.102,
+            "occupiedTop": 40,
+            "viewBoxTop": 0,
+            "canvasHeight": 394,
+            "typicalNodeHeight": 76,
+            "reviewSuggested": false
+          },
+          "desktopReadability": {
+            "budgetBasis": "recognized-declared-wide",
+            "readerContract": "declared-wide-v1",
+            "availableDiagramWidth": 930,
+            "actualBudgetPx": 930,
+            "actualReaderWidth": 960,
+            "desiredReaderWidth": 960,
+            "viewportCap": 1376,
+            "limit": "source-size",
+            "requestedTargetPx": 7.5,
+            "requestedTargetMet": true,
+            "hardFloorPx": 6,
+            "hardFloorMet": true,
+            "minimumOwner": {
+              "kind": "edge",
+              "id": "react-monolith",
+              "from": "react",
+              "to": "monolith"
+            },
+            "minimumSourceTextPx": 8,
+            "minimumProjectedTextPx": 8,
+            "semanticTextCount": 8
+          },
+          "issues": []
+        },
+        "provenance": "current",
+        "deliveryReceiptId": "780977f5-bb9c-4818-9f0c-69163c8c8de3"
+      }
+    },
+    "browser-check": {
+      "status": "skipped",
+      "exitCode": 2,
+      "durationMs": 22,
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "/workspace/scratch/cb8e3b3519a8/archify-skill/archify/bin/archify.mjs",
+        "browser-check",
+        "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/01-react-monolith.html",
+        "--json",
+        "--require-provenance"
+      ],
+      "execution": "in-process",
+      "receipt": {
+        "schemaVersion": 1,
+        "ok": false,
+        "command": "browser-check",
+        "evidenceKind": "automated-browser",
+        "status": "skipped",
+        "visualReview": "not-requested",
+        "provenance": "current",
+        "deliveryReceiptId": "780977f5-bb9c-4818-9f0c-69163c8c8de3",
+        "artifact": {
+          "path": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/01-react-monolith.html",
+          "sha256": "fe2c6c2034b543806ddf0f76558fd9c0ae2646e1c9588b2d5f20f36091eacc88",
+          "bytes": 824619
+        },
+        "state": {
+          "detail": "read",
+          "motion": "still"
+        },
+        "chrome": {
+          "status": "unavailable",
+          "executable": null
+        },
+        "diagnostics": [
+          {
+            "code": "viewer/chrome-unavailable",
+            "severity": "warning",
+            "message": "No supported browser found. Install Chrome/Chromium (or Microsoft Edge), or set ARCHIFY_CHROME to its executable path.",
+            "subject": {
+              "artifact": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/01-react-monolith.html"
+            },
+            "evidence": {
+              "executable": null
+            },
+            "supportedFixes": [
+              "set ARCHIFY_CHROME to a Chrome/Chromium executable (or Microsoft Edge) and rerun browser-check"
+            ]
+          }
+        ],
+        "containment": {
+          "status": "skipped",
+          "policy": "fit-or-reader-declared-readable-vertical-scroll",
+          "viewports": []
+        },
+        "themeStates": {
+          "status": "skipped",
+          "viewports": []
+        },
+        "readability": {
+          "status": "skipped",
+          "minimumProjectedNodeTextPx": 6,
+          "viewports": []
+        },
+        "viewerChrome": {
+          "status": "skipped",
+          "viewports": []
+        },
+        "captures": {
+          "status": "not-requested",
+          "screenshots": [],
+          "contactSheet": null
+        },
+        "sidecars": {
+          "receipt": "01-react-monolith.browser-check.json",
+          "files": []
+        },
+        "error": "No supported browser found. Install Chrome/Chromium (or Microsoft Edge), or set ARCHIFY_CHROME to its executable path."
+      }
+    }
+  },
+  "browserCheck": {
+    "requested": true,
+    "ran": false
+  },
+  "diagnostics": [
+    {
+      "code": "viewer/chrome-unavailable",
+      "severity": "warning",
+      "message": "No supported browser found. Install Chrome/Chromium (or Microsoft Edge), or set ARCHIFY_CHROME to its executable path.",
+      "subject": {
+        "artifact": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/01-react-monolith.html"
+      },
+      "evidence": {
+        "executable": null
+      },
+      "supportedFixes": [
+        "set ARCHIFY_CHROME to a Chrome/Chromium executable (or Microsoft Edge) and rerun browser-check"
+      ]
+    }
+  ],
+  "evidence": {
+    "receipt": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/01-react-monolith.finalize.json",
+    "summaryReceipt": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/01-react-monolith.finalize-summary.json",
+    "browserCheckReceipt": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/01-react-monolith.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "failedStage": "browser-check",
+  "finishedAt": "2026-10-23T17:22:17.974Z",
+  "durationMs": 675,
+  "update": {
+    "status": "unavailable",
+    "installedVersion": null,
+    "availableVersion": null,
+    "releaseNotes": null,
+    "checkedAt": null,
+    "source": null,
+    "noticeRequired": false,
+    "noticeText": null,
+    "reason": "disabled"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "ffd23b9d-886e-4824-8711-8b808e09db98",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/sources/05-order-service.json",
+  "output": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/05-order-service.html",
+  "specification": {
+    "sha256": "b0efaf596e0a4d3bce8381032abf0de8076e00312df6336b02b0db46a5158e43",
+    "bytes": 47584
+  },
+  "artifact": {
+    "sha256": "0731c5b9ea9fddb668a9ff8705e27776ee61e541c7ee650c3d37976bd8b81787",
+    "bytes": 839210
+  }
+}

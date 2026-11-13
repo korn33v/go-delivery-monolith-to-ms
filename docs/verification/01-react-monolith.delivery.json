@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "780977f5-bb9c-4818-9f0c-69163c8c8de3",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/sources/01-react-monolith.json",
+  "output": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/01-react-monolith.html",
+  "specification": {
+    "sha256": "a3019e33ee5a19e237cf47bbfeb0ced6b0da1f597b866ecdf1ca078cb1f4afdf",
+    "bytes": 42351
+  },
+  "artifact": {
+    "sha256": "fe2c6c2034b543806ddf0f76558fd9c0ae2646e1c9588b2d5f20f36091eacc88",
+    "bytes": 824619
+  }
+}

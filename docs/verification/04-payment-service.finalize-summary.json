@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "skipped",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/sources/04-payment-service.json",
+    "sha256": "7eafae992baa6d2e46f1835a09d96b80a0fb98b123ce8c904f7b5897b301e6ae",
+    "bytes": 45841
+  },
+  "artifact": {
+    "path": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/04-payment-service.html",
+    "sha256": "e94002ac993af9a4ea2df4eb30b7390ace6bb31349afc43c475794aba5529017",
+    "bytes": 837299
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "skipped"
+  },
+  "failedStage": "browser-check",
+  "diagnostics": [
+    {
+      "code": "viewer/chrome-unavailable",
+      "severity": "warning",
+      "message": "No supported browser found. Install Chrome/Chromium (or Microsoft Edge), or set ARCHIFY_CHROME to its executable path.",
+      "subject": {
+        "artifact": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/04-payment-service.html"
+      },
+      "evidence": {
+        "executable": null
+      },
+      "supportedFixes": [
+        "set ARCHIFY_CHROME to a Chrome/Chromium executable (or Microsoft Edge) and rerun browser-check"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/04-payment-service.finalize.json",
+    "summaryReceipt": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/04-payment-service.finalize-summary.json",
+    "browserCheckReceipt": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/04-payment-service.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 753,
+  "browserCheck": {
+    "requested": true,
+    "ran": false
+  }
+}

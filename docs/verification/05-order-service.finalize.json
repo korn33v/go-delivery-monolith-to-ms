@@ -1,0 +1,448 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "skipped",
+  "type": "architecture",
+  "quality": "showcase",
+  "startedAt": "2026-10-23T17:22:55.099Z",
+  "specification": {
+    "path": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/sources/05-order-service.json",
+    "sha256": "b0efaf596e0a4d3bce8381032abf0de8076e00312df6336b02b0db46a5158e43",
+    "bytes": 47584
+  },
+  "artifact": {
+    "path": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/05-order-service.html",
+    "sha256": "0731c5b9ea9fddb668a9ff8705e27776ee61e541c7ee650c3d37976bd8b81787",
+    "bytes": 839210
+  },
+  "stages": {
+    "validate": {
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": null,
+      "execution": "embedded-in-deliver",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "/workspace/scratch/cb8e3b3519a8/archify-skill/archify/bin/archify.mjs",
+        "deliver",
+        "architecture",
+        "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/sources/05-order-service.json",
+        "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/05-order-service.html",
+        "--quality",
+        "showcase",
+        "--json"
+      ],
+      "receipt": {
+        "schemaVersion": 1,
+        "ok": true,
+        "command": "validate",
+        "specification": {
+          "sha256": "b0efaf596e0a4d3bce8381032abf0de8076e00312df6336b02b0db46a5158e43",
+          "bytes": 47584
+        },
+        "validation": {
+          "checksPassed": 9,
+          "checkCount": 9,
+          "compositionProfile": "showcase",
+          "compositionStatus": "pass",
+          "errors": 0,
+          "warnings": 0
+        }
+      }
+    },
+    "deliver": {
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": 450,
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "/workspace/scratch/cb8e3b3519a8/archify-skill/archify/bin/archify.mjs",
+        "deliver",
+        "architecture",
+        "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/sources/05-order-service.json",
+        "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/05-order-service.html",
+        "--quality",
+        "showcase",
+        "--json"
+      ],
+      "receipt": {
+        "schemaVersion": 1,
+        "receiptId": "50639a9e-3068-4bb8-83a1-33b470e02894",
+        "ok": true,
+        "command": "deliver",
+        "type": "architecture",
+        "input": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/sources/05-order-service.json",
+        "output": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/05-order-service.html",
+        "specification": {
+          "sha256": "b0efaf596e0a4d3bce8381032abf0de8076e00312df6336b02b0db46a5158e43",
+          "bytes": 47584
+        },
+        "artifact": {
+          "sha256": "0731c5b9ea9fddb668a9ff8705e27776ee61e541c7ee650c3d37976bd8b81787",
+          "bytes": 839210
+        },
+        "validation": {
+          "checksPassed": 9,
+          "checkCount": 9,
+          "compositionProfile": "showcase",
+          "compositionStatus": "pass",
+          "errors": 0,
+          "warnings": 0
+        },
+        "diagnostics": [
+          {
+            "code": "i18n/translation-coverage",
+            "severity": "warning",
+            "message": "meta.locale \"ru\" resolves 461/486 renderer-owned messages (94%) from 461 meta.translations entries; 25 fall back to English.",
+            "subject": {
+              "diagramType": "architecture",
+              "path": "/meta/translations"
+            },
+            "evidence": {
+              "locale": "ru",
+              "resolvedLocale": "ru",
+              "bundledLocale": null,
+              "translatedKeys": 461,
+              "totalKeys": 486,
+              "appliedOverrideKeys": 461,
+              "missingKeys": [
+                "viewer.export.svg.auto",
+                "viewer.export.svg.auto.hint",
+                "viewer.export.svg.light",
+                "viewer.export.svg.light.hint",
+                "viewer.export.svg.dark",
+                "viewer.export.svg.dark.hint",
+                "viewer.guide.title",
+                "viewer.focus.selectedNodes",
+                "viewer.guide.credit",
+                "viewer.guide.star"
+              ],
+              "missingKeysTotal": 25,
+              "englishSource": {
+                "viewer.export.svg.auto": "SVG · Auto",
+                "viewer.export.svg.auto.hint": "Matches host theme",
+                "viewer.export.svg.light": "SVG · Light",
+                "viewer.export.svg.light.hint": "Always light",
+                "viewer.export.svg.dark": "SVG · Dark",
+                "viewer.export.svg.dark.hint": "Always dark",
+                "viewer.guide.title": "Explore this system",
+                "viewer.focus.selectedNodes": "{count} selected nodes",
+                "viewer.guide.credit": "Find Archify useful? A star on GitHub helps",
+                "viewer.guide.star": "Star"
+              }
+            },
+            "supportedFixes": [
+              "Add each missing key to meta.translations, translating its English source string and keeping its {placeholders}."
+            ]
+          }
+        ],
+        "update": {
+          "status": "unavailable",
+          "installedVersion": null,
+          "availableVersion": null,
+          "releaseNotes": null,
+          "checkedAt": null,
+          "source": null,
+          "noticeRequired": false,
+          "noticeText": null,
+          "reason": "disabled"
+        }
+      },
+      "stderr": "archify: meta.locale \"ru\" resolves 461/486 renderer-owned messages (94%) from 461 meta.translations entries; 25 fall back to English."
+    },
+    "check": {
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": 189,
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "/workspace/scratch/cb8e3b3519a8/archify-skill/archify/bin/archify.mjs",
+        "check",
+        "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/05-order-service.html",
+        "--require-provenance"
+      ],
+      "receipt": {
+        "ok": true,
+        "file": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/05-order-service.html",
+        "artifact": {
+          "sha256": "0731c5b9ea9fddb668a9ff8705e27776ee61e541c7ee650c3d37976bd8b81787",
+          "bytes": 839210
+        },
+        "checks": [
+          {
+            "name": "single_svg",
+            "ok": true,
+            "details": [
+              "found 1 <svg> block(s)"
+            ]
+          },
+          {
+            "name": "finite_svg",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "orthogonal_arrows",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "label_route_clearance",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "relationship_crossings",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "relationship_corridors",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "container_border_runs",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "route_rhythm",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "legend_clearance",
+            "ok": true,
+            "details": []
+          }
+        ],
+        "composition": {
+          "schemaVersion": 1,
+          "profile": "showcase",
+          "status": "pass",
+          "summary": {
+            "errors": 0,
+            "warnings": 0
+          },
+          "metrics": {
+            "properCrossings": 0,
+            "resolvedCrossovers": 0,
+            "ambiguousCorridors": 0,
+            "arrowheadCollisions": 0,
+            "containerBorderRuns": 0,
+            "labelRouteClearanceIssues": 0,
+            "labelCanvasOverflowIssues": 0,
+            "minLabelRouteClearance": 20,
+            "desktopReadabilityIssues": 0,
+            "viewportHeightIssues": 0,
+            "minProjectedNodeTextPx": 7.5,
+            "maxBends": 3,
+            "routesOverSuggestedBends": 1,
+            "maxStretch": 1.064,
+            "routesOverSuggestedStretch": 0,
+            "minSegmentPx": 24,
+            "minInteriorSegmentPx": 55,
+            "shortSegmentCount": 0,
+            "shortEndpointSegmentCount": 0,
+            "shortInteriorSegmentCount": 0,
+            "microSegmentCount": 0
+          },
+          "suggestedLimits": {
+            "bendsPerRelationship": 2,
+            "stretch": 1.35,
+            "segmentPx": 16,
+            "microSegmentPx": 8
+          },
+          "routeReview": {
+            "crossings": [],
+            "detours": [
+              {
+                "relationship": {
+                  "id": "gateway-stock",
+                  "from": "gateway",
+                  "to": "stock",
+                  "label": "GET stock",
+                  "collectionIndex": 2,
+                  "artifactIndex": 3
+                },
+                "bends": 3,
+                "stretch": 1.064,
+                "directCorridorBlockers": [
+                  {
+                    "id": "order",
+                    "label": "Order Service",
+                    "box": [
+                      470,
+                      260,
+                      200,
+                      76
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "leadingSpace": {
+            "measured": true,
+            "emptyTopPx": 40,
+            "emptyTopRatio": 0.058,
+            "occupiedTop": 40,
+            "viewBoxTop": 0,
+            "canvasHeight": 684,
+            "typicalNodeHeight": 76,
+            "reviewSuggested": false
+          },
+          "desktopReadability": {
+            "budgetBasis": "recognized-declared-wide",
+            "readerContract": "declared-wide-v1",
+            "availableDiagramWidth": 1040.625,
+            "actualBudgetPx": 1040.625,
+            "actualReaderWidth": 1070.625,
+            "desiredReaderWidth": 1070.625,
+            "viewportCap": 1376,
+            "limit": "source-size",
+            "requestedTargetPx": 7.5,
+            "requestedTargetMet": true,
+            "hardFloorPx": 6,
+            "hardFloorMet": true,
+            "minimumOwner": {
+              "kind": "edge",
+              "id": "react-gateway",
+              "from": "react",
+              "to": "gateway"
+            },
+            "minimumSourceTextPx": 8,
+            "minimumProjectedTextPx": 7.5,
+            "semanticTextCount": 20
+          },
+          "issues": []
+        },
+        "provenance": "current",
+        "deliveryReceiptId": "50639a9e-3068-4bb8-83a1-33b470e02894"
+      }
+    },
+    "browser-check": {
+      "status": "skipped",
+      "exitCode": 2,
+      "durationMs": 21,
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "/workspace/scratch/cb8e3b3519a8/archify-skill/archify/bin/archify.mjs",
+        "browser-check",
+        "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/05-order-service.html",
+        "--json",
+        "--require-provenance"
+      ],
+      "execution": "in-process",
+      "receipt": {
+        "schemaVersion": 1,
+        "ok": false,
+        "command": "browser-check",
+        "evidenceKind": "automated-browser",
+        "status": "skipped",
+        "visualReview": "not-requested",
+        "provenance": "current",
+        "deliveryReceiptId": "50639a9e-3068-4bb8-83a1-33b470e02894",
+        "artifact": {
+          "path": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/05-order-service.html",
+          "sha256": "0731c5b9ea9fddb668a9ff8705e27776ee61e541c7ee650c3d37976bd8b81787",
+          "bytes": 839210
+        },
+        "state": {
+          "detail": "read",
+          "motion": "still"
+        },
+        "chrome": {
+          "status": "unavailable",
+          "executable": null
+        },
+        "diagnostics": [
+          {
+            "code": "viewer/chrome-unavailable",
+            "severity": "warning",
+            "message": "No supported browser found. Install Chrome/Chromium (or Microsoft Edge), or set ARCHIFY_CHROME to its executable path.",
+            "subject": {
+              "artifact": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/05-order-service.html"
+            },
+            "evidence": {
+              "executable": null
+            },
+            "supportedFixes": [
+              "set ARCHIFY_CHROME to a Chrome/Chromium executable (or Microsoft Edge) and rerun browser-check"
+            ]
+          }
+        ],
+        "containment": {
+          "status": "skipped",
+          "policy": "fit-or-reader-declared-readable-vertical-scroll",
+          "viewports": []
+        },
+        "themeStates": {
+          "status": "skipped",
+          "viewports": []
+        },
+        "readability": {
+          "status": "skipped",
+          "minimumProjectedNodeTextPx": 6,
+          "viewports": []
+        },
+        "viewerChrome": {
+          "status": "skipped",
+          "viewports": []
+        },
+        "captures": {
+          "status": "not-requested",
+          "screenshots": [],
+          "contactSheet": null
+        },
+        "sidecars": {
+          "receipt": "05-order-service.browser-check.json",
+          "files": []
+        },
+        "error": "No supported browser found. Install Chrome/Chromium (or Microsoft Edge), or set ARCHIFY_CHROME to its executable path."
+      }
+    }
+  },
+  "browserCheck": {
+    "requested": true,
+    "ran": false
+  },
+  "diagnostics": [
+    {
+      "code": "viewer/chrome-unavailable",
+      "severity": "warning",
+      "message": "No supported browser found. Install Chrome/Chromium (or Microsoft Edge), or set ARCHIFY_CHROME to its executable path.",
+      "subject": {
+        "artifact": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/05-order-service.html"
+      },
+      "evidence": {
+        "executable": null
+      },
+      "supportedFixes": [
+        "set ARCHIFY_CHROME to a Chrome/Chromium executable (or Microsoft Edge) and rerun browser-check"
+      ]
+    }
+  ],
+  "evidence": {
+    "receipt": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/05-order-service.finalize.json",
+    "summaryReceipt": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/05-order-service.finalize-summary.json",
+    "browserCheckReceipt": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/05-order-service.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "failedStage": "browser-check",
+  "finishedAt": "2026-10-23T17:22:55.839Z",
+  "durationMs": 740,
+  "update": {
+    "status": "unavailable",
+    "installedVersion": null,
+    "availableVersion": null,
+    "releaseNotes": null,
+    "checkedAt": null,
+    "source": null,
+    "noticeRequired": false,
+    "noticeText": null,
+    "reason": "disabled"
+  }
+}

@@ -1,0 +1,92 @@
+package handler
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+
+	"example.com/strangler/internal/contract"
+	"example.com/strangler/order-service/internal/domain"
+	"example.com/strangler/order-service/internal/usecase"
+	"github.com/gin-gonic/gin"
+)
+
+type Handler struct{ Service *usecase.Service }
+
+func New(service *usecase.Service) *Handler { return &Handler{Service: service} }
+func (h *Handler) Register(r *gin.Engine) {
+	r.POST("/api/v1/orders", h.Create)
+	r.GET("/api/v1/orders/:id", h.Get)
+}
+
+// Create godoc
+// @Summary Оформить заказ
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Param order body contract.CreateOrder true "Товар и количество"
+// @Success 201 {object} contract.Order "Локальная оплата завершена"
+// @Success 202 {object} contract.Order "Заказ принят; оплата через Kafka"
+// @Failure 400 {object} contract.APIError
+// @Failure 404 {object} contract.APIError
+// @Failure 409 {object} contract.APIError
+// @Failure 501 {object} contract.APIError
+// @Failure 503 {object} contract.APIError
+// @Router /api/v1/orders [post]
+func (h *Handler) Create(c *gin.Context) {
+	// TODO для студентов: разобрать JSON через httpapi.Decode; добавить импорт
+	// example.com/strangler/internal/httpapi. При ошибке вернуть HTTP 400.
+	// TODO для студентов: вызвать h.Service.Create с c.Request.Context()
+	// и domain.CreateOrder. Типизированные ошибки отдать через respondError.
+	// TODO для студентов: вернуть HTTP 202 с заказом и X-Backend=order-service.
+	// TODO для студентов: дополнить Swagger-комментарии целевого контракта выше.
+	respondError(c, domain.ErrNotImplemented, domain.Order{})
+}
+
+// Get godoc
+// @Summary Получить статус заказа
+// @Tags orders
+// @Produce json
+// @Param id path string true "ID заказа"
+// @Success 200 {object} contract.Order
+// @Failure 404 {object} contract.APIError
+// @Router /api/v1/orders/{id} [get]
+func (h *Handler) Get(c *gin.Context) {
+	order, err := h.Service.Get(c.Param("id"))
+	if err != nil {
+		respondError(c, err, order)
+		return
+	}
+	c.Header("X-Backend", "order-service")
+	c.JSON(200, order)
+}
+
+func respondError(c *gin.Context, err error, order domain.Order) {
+	status := 500
+	switch {
+	case errors.Is(err, domain.ErrInvalid):
+		status = 400
+	case errors.Is(err, domain.ErrNotFound):
+		status = 404
+	case errors.Is(err, domain.ErrSoldOut):
+		status = 409
+	case errors.Is(err, domain.ErrPublish), errors.Is(err, domain.ErrStock):
+		status = 503
+	case errors.Is(err, domain.ErrNotImplemented):
+		status = 501
+	}
+	response := contract.APIError{Error: err.Error()}
+	if order.ID != "" {
+		dto := contract.Order(order)
+		response.Order = &dto
+	}
+	c.JSON(status, response)
+}
+
+func (h *Handler) PaymentResult(ctx context.Context, body []byte) error {
+	var event contract.PaymentCompleted
+	if err := json.Unmarshal(body, &event); err != nil {
+		return err
+	}
+	return h.Service.Paid(event.OrderID, event.Owner, event.Status)
+}

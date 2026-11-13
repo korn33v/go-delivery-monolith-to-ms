@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "skipped",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/sources/03-stock-service.json",
+    "sha256": "7e3d676f4db3b6fe6265dbe085d3f392ae3e2081addc5d7dbe1a2f4e4dbe6974",
+    "bytes": 43998
+  },
+  "artifact": {
+    "path": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/03-stock-service.html",
+    "sha256": "b590e62bf800d59fd48b1e09765d8e46b0f94ec63efec1a70ab4312f587876f3",
+    "bytes": 829017
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "skipped"
+  },
+  "failedStage": "browser-check",
+  "diagnostics": [
+    {
+      "code": "viewer/chrome-unavailable",
+      "severity": "warning",
+      "message": "No supported browser found. Install Chrome/Chromium (or Microsoft Edge), or set ARCHIFY_CHROME to its executable path.",
+      "subject": {
+        "artifact": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/03-stock-service.html"
+      },
+      "evidence": {
+        "executable": null
+      },
+      "supportedFixes": [
+        "set ARCHIFY_CHROME to a Chrome/Chromium executable (or Microsoft Edge) and rerun browser-check"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/03-stock-service.finalize.json",
+    "summaryReceipt": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/03-stock-service.finalize-summary.json",
+    "browserCheckReceipt": "/workspace/scratch/cb8e3b3519a8/.archify/architecture-strangler-20261023/diagrams/03-stock-service.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 680,
+  "browserCheck": {
+    "requested": true,
+    "ran": false
+  }
+}
