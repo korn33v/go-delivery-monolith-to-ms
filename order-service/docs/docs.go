@@ -29,12 +29,12 @@ const docTemplate = `{
                 "summary": "Оформить заказ",
                 "parameters": [
                     {
-                        "description": "Товар и количество",
+                        "description": "Товар и количество; demo_failure принимается только при SAGA_ENABLED и SAGA_DEMO_FAILURES",
                         "name": "order",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/contract.CreateOrder"
+                            "$ref": "#/definitions/contract.SagaCreateOrder"
                         }
                     }
                 ],
@@ -46,9 +46,9 @@ const docTemplate = `{
                         }
                     },
                     "202": {
-                        "description": "Заказ принят; оплата через Kafka",
+                        "description": "Заказ принят; saga_id и saga_state присутствуют в режиме Saga",
                         "schema": {
-                            "$ref": "#/definitions/contract.Order"
+                            "$ref": "#/definitions/contract.SagaOrder"
                         }
                     },
                     "400": {
@@ -104,9 +104,9 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "В режиме Strangler поля Saga отсутствуют",
                         "schema": {
-                            "$ref": "#/definitions/contract.Order"
+                            "$ref": "#/definitions/contract.SagaOrder"
                         }
                     },
                     "404": {
@@ -131,19 +131,6 @@ const docTemplate = `{
                 }
             }
         },
-        "contract.CreateOrder": {
-            "type": "object",
-            "properties": {
-                "product_id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "quantity": {
-                    "type": "integer",
-                    "example": 1
-                }
-            }
-        },
         "contract.Order": {
             "type": "object",
             "properties": {
@@ -161,6 +148,67 @@ const docTemplate = `{
                 },
                 "quantity": {
                     "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "contract.SagaAPIError": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "order": {
+                    "$ref": "#/definitions/contract.SagaOrder"
+                }
+            }
+        },
+        "contract.SagaCreateOrder": {
+            "type": "object",
+            "properties": {
+                "demo_failure": {
+                    "type": "string",
+                    "enum": [
+                        "payment",
+                        "refund"
+                    ]
+                },
+                "product_id": {
+                    "type": "integer"
+                },
+                "quantity": {
+                    "type": "integer"
+                }
+            }
+        },
+        "contract.SagaOrder": {
+            "type": "object",
+            "properties": {
+                "amount_cents": {
+                    "type": "integer"
+                },
+                "failure_reason": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "owner": {
+                    "type": "string"
+                },
+                "product_id": {
+                    "type": "integer"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "saga_id": {
+                    "type": "string"
+                },
+                "saga_state": {
+                    "type": "string"
                 },
                 "status": {
                     "type": "string"

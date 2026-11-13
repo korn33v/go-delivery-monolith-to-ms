@@ -52,6 +52,7 @@ func (h Headers) Keys() []string {
 type Producer struct {
 	Writer    *kafka.Writer
 	Telemetry *observability.Telemetry
+	Service   string
 }
 
 func NewProducer(brokers []string, t *observability.Telemetry) *Producer {
@@ -84,7 +85,7 @@ func (p *Producer) Close() {
 	}
 }
 
-func EnsureTopics(ctx context.Context, brokers []string) error {
+func EnsureTopics(ctx context.Context, brokers []string, topics ...string) error {
 	dialer := &kafka.Dialer{Timeout: 5 * time.Second}
 	conn, err := dialer.DialContext(ctx, "tcp", brokers[0])
 	if err != nil {
@@ -106,7 +107,10 @@ func EnsureTopics(ctx context.Context, brokers []string) error {
 	if deadline, ok := ctx.Deadline(); ok {
 		_ = admin.SetDeadline(deadline)
 	}
-	for _, topic := range []string{contract.CreatedTopic, contract.PaidTopic} {
+	if len(topics) == 0 {
+		topics = []string{contract.CreatedTopic, contract.PaidTopic}
+	}
+	for _, topic := range topics {
 		err := admin.CreateTopics(kafka.TopicConfig{Topic: topic, NumPartitions: 1, ReplicationFactor: 1})
 		if err != nil && !errors.Is(err, kafka.TopicAlreadyExists) {
 			return err

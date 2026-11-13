@@ -2,13 +2,16 @@ import React, { useEffect, useState } from "react";
 
 // No Vite proxy or direct service URLs: every API request goes to Gateway.
 const API = "http://localhost:8080";
-const finalStates = ["PAID", "REJECTED"];
+const finalStates = ["PAID", "REJECTED", "CONFIRMED", "CANCELLED"];
 const statusNames = {
   NEW: "Ожидает оплаты",
   PAID: "Оплачен",
   PAYMENT_UNKNOWN: "Результат отправки неизвестен",
   STOCK_UNKNOWN: "Нужна проверка резерва",
   REJECTED: "Отклонён",
+  PENDING: "Заказ в обработке",
+  CONFIRMED: "Заказ подтверждён",
+  CANCELLED: "Заказ отменён",
 };
 
 async function request(path, options = {}) {
@@ -63,7 +66,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!order || finalStates.includes(order.status)) return;
+    if (!order || finalStates.includes(order.status) || order.saga_state === "COMPENSATION_FAILED") return;
     const controller = new AbortController();
     let timer;
     async function poll() {
@@ -73,7 +76,7 @@ export default function App() {
           { signal: controller.signal },
         );
         setOrder(result.data);
-        if (finalStates.includes(result.data.status)) return;
+        if (finalStates.includes(result.data.status) || result.data.saga_state === "COMPENSATION_FAILED") return;
       } catch (e) {
         if (e.name !== "AbortError") setError(e.message);
       }
@@ -105,7 +108,7 @@ export default function App() {
     }
   }
 
-  const pending = order && !finalStates.includes(order.status);
+  const pending = order && !finalStates.includes(order.status) && order.saga_state !== "COMPENSATION_FAILED";
   const stage = !flags
     ? "—"
     : flags.order_microservice
@@ -250,19 +253,22 @@ export default function App() {
             {order ? (
               <>
                 <div
-                  className={`status ${order.status === "PAID" ? "paid" : ""}`}
+                  className={`status ${["PAID", "CONFIRMED"].includes(order.status) ? "paid" : ""}`}
                   data-testid="status"
                 >
                   {statusNames[order.status] || order.status}
                 </div>
                 <code>{order.id}</code>
                 <p>Владелец: {order.owner}</p>
-                <div className="steps">
+                {order.saga_id && <p>Saga: <code>{order.saga_id}</code><br />Шаг: <b>{order.saga_state}</b></p>}
+                {order.failure_reason && <p>Причина: {order.failure_reason}</p>}
+                {order.saga_state === "COMPENSATION_FAILED" && <p role="alert">Возврат не выполнен. Требуется разбор преподавателем.</p>}
+                {order.saga_id ? <div className="steps"><span>Оплата → Резерв → Подтверждение</span></div> : <div className="steps">
                   <span className="done">Создан</span>
                   <span className={order.status === "PAID" ? "done" : ""}>
                     Оплачен
                   </span>
-                </div>
+                </div>}
                 {trace && (
                   <a
                     href={`http://localhost:16686/trace/${trace}`}

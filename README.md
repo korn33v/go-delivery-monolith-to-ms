@@ -1,5 +1,13 @@
 # GoDelivery: миграция монолита по Strangler Fig
 
+Продолжение курса: **EDA и Orchestrated Saga (90 минут)** —
+[SEMINAR_GUIDE.md](SEMINAR_GUIDE.md). Полностью контейнерный стенд с PostgreSQL,
+Kafka и теми же Order/Payment/Stock запускается `make saga-up` без `.env`.
+Центральная демонстрация «оплата → отказ склада → возврат → отмена»:
+`make saga-demo-compensation`. Все E2E: `make saga-e2e`; ZIP рабочего проекта:
+`make saga-zip`. Kafka/API контракты: [docs/SAGA_CONTRACTS.md](docs/SAGA_CONTRACTS.md).
+Используйте один стенд за раз: порты Strangler и Saga совпадают.
+
 Учебная цель: заменить части монолита по одному маршруту, сохранив контракт
 клиента. После каждого этапа покупка работает через тот же API Gateway.
 Четыре лабораторных этапа рассчитаны примерно на 2–3 часа вместе с заданием.

@@ -8,6 +8,9 @@ import (
 
 	"example.com/strangler/internal/config"
 	"example.com/strangler/internal/observability"
+	"example.com/strangler/internal/postgres"
+	"example.com/strangler/internal/sagacontract"
+	"example.com/strangler/internal/sagaruntime"
 	"example.com/strangler/internal/server"
 	"example.com/strangler/internal/stockclient"
 	_ "example.com/strangler/stock-service/docs"
@@ -40,6 +43,9 @@ func run() error {
 		return err
 	}
 	defer telemetry.Shutdown()
+	if cfg.Bool("SAGA_ENABLED", false) {
+		return runSaga(ctx, cfg, telemetry)
+	}
 	product := domain.Product{ID: 1, Name: "Ноутбук", PriceCents: 9999000, Available: cfg.Int("INITIAL_STOCK", 50)}
 	if cfg.Bool("STOCK_BOOTSTRAP_FROM_MONOLITH", true) {
 		// One-off data migration, NOT a read-through dependency. Pause purchases
@@ -60,4 +66,25 @@ func run() error {
 	r.POST("/api/v1/stock/reservations", h.Reserve)
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
 	return server.Run(ctx, cfg.String("STOCK_ADDR", ":8082"), r)
+}
+
+func runSaga(ctx context.Context, cfg *config.Config, t *observability.Telemetry) error {
+	db, err := postgres.Open(ctx, cfg.String("DATABASE_URL", "postgres://stock:stock_demo@localhost:15432/stock?sslmode=disable"), repository.SagaSchema)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	p, err := sagaruntime.Messaging(ctx, cfg, t, "stock-service")
+	if err != nil {
+		return err
+	}
+	defer p.Close()
+	store := &repository.SagaStore{DB: db}
+	h := delivery.New(usecase.New(store))
+	r := t.Router("stock-service")
+	r.GET("/api/v1/stock/:id", h.Get)
+	r.POST("/api/v1/stock/reservations", h.Reserve)
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
+	kafkaHandler := &delivery.SagaHandler{Service: usecase.NewSaga(store, p)}
+	return sagaruntime.Serve(ctx, cfg, t, db, r, cfg.String("STOCK_ADDR", ":8082"), sagacontract.StockCommands, "saga-stock-v1", kafkaHandler.Command)
 }

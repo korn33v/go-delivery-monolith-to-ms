@@ -52,3 +52,32 @@ smoke3:
 	go run ./cmd/smoke -stage=3 -require-trace
 smoke4:
 	go run ./cmd/smoke -stage=4 -require-trace
+
+.PHONY: saga-up saga-down saga-reset saga-logs saga-demo-happy saga-demo-payment-failed saga-demo-compensation saga-demo-duplicate saga-demo-refund-failed saga-e2e saga-acceptance saga-integration saga-zip
+saga-up:
+	docker compose -f compose.saga.yaml up -d --build --wait --wait-timeout 240
+saga-down:
+	docker compose -f compose.saga.yaml down
+# Explicitly destructive: deletes ONLY this Saga project's Kafka and SQL data.
+saga-reset:
+	docker compose -f compose.saga.yaml down -v
+saga-logs:
+	docker compose -f compose.saga.yaml logs -f order-service payment-service stock-service
+saga-demo-happy:
+	python3 scripts/saga_demo.py happy
+saga-demo-payment-failed:
+	python3 scripts/saga_demo.py payment-failed
+saga-demo-compensation:
+	python3 scripts/saga_demo.py compensation
+saga-demo-duplicate:
+	python3 scripts/saga_demo.py duplicate
+saga-demo-refund-failed:
+	python3 scripts/saga_demo.py refund-failed
+saga-e2e:
+	python3 scripts/saga_demo.py all
+saga-acceptance:
+	go test ./order-service/internal/domain ./payment-service/internal/domain ./stock-service/internal/domain
+saga-integration:
+	go test -race -tags=saga_integration ./order-service/internal/usecase ./payment-service/internal/usecase
+saga-zip:
+	python3 scripts/package_saga.py

@@ -1,0 +1,112 @@
+openapi: 3.0.3
+info:
+  title: GoDelivery Saga demonstration API
+  version: 1.0.0
+  description: >-
+    Applies when SAGA_ENABLED=true. Existing Swagger v2 for the gateway and
+    services remains available in their docs directories. This specification
+    also documents the internal readiness endpoint of all three participants.
+servers:
+  - url: http://localhost:8080
+    description: API Gateway
+paths:
+  /api/v1/orders:
+    post:
+      summary: Create a PENDING order and start its Saga
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [product_id, quantity]
+              properties:
+                product_id: {type: integer, enum: [1, 2]}
+                quantity: {type: integer, minimum: 1, maximum: 10}
+                demo_failure:
+                  type: string
+                  enum: [payment, refund]
+                  description: Only accepted when SAGA_DEMO_FAILURES=true
+      responses:
+        '202':
+          description: Saved locally; asynchronous process is in progress
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Order'}
+        '400': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+  /api/v1/orders/{id}:
+    get:
+      summary: Read order and current persisted Saga state
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: Current order snapshot
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Order'}
+        '404': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+  /ready:
+    servers:
+      - url: http://localhost:8083
+        description: Order
+      - url: http://localhost:8084
+        description: Payment
+      - url: http://localhost:8082
+        description: Stock
+    get:
+      summary: Internal readiness; own database is reachable
+      description: Compose also waits for Kafka topic initialization; this endpoint does not check consumer assignment.
+      responses:
+        '200':
+          description: Database reachable
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: {type: string, enum: [ready]}
+        '503':
+          description: Database unreachable
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: {type: string, enum: [database unavailable]}
+components:
+  responses:
+    Error:
+      description: Validation, lookup or technical failure; a saved order is included when first publication is uncertain
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: {type: string}
+              order: {$ref: '#/components/schemas/Order'}
+  schemas:
+    Order:
+      type: object
+      required: [id, product_id, quantity, amount_cents, status, owner, saga_id, saga_state]
+      properties:
+        id: {type: string}
+        product_id: {type: integer}
+        quantity: {type: integer}
+        amount_cents: {type: integer, format: int64}
+        status: {type: string, enum: [PENDING, CONFIRMED, CANCELLED]}
+        owner: {type: string, enum: [order-service]}
+        saga_id: {type: string}
+        saga_state:
+          type: string
+          enum: [PENDING, PAYMENT_PENDING, STOCK_PENDING, COMPENSATING, COMPLETED, CANCELLED, COMPENSATION_FAILED]
+        failure_reason: {type: string}

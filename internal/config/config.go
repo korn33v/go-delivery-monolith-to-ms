@@ -44,7 +44,7 @@ func Load() (*Config, error) {
 	}
 	if _, err := c.Flags(); err != nil {
 		if c.File == "" {
-			return nil, fmt.Errorf("no .env file available: copy env.example to .env in the selected start/solution directory, set ENV_FILE to a readable file, or supply all four migration flags in the process environment: %w", err)
+			return nil, fmt.Errorf("no .env file available: copy env.example to .env in the project directory, set ENV_FILE to a readable file, or supply all four migration flags in the process environment: %w", err)
 		}
 		return nil, err
 	}

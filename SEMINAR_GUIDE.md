@@ -1,0 +1,450 @@
+# GoDelivery: EDA и Orchestrated Saga — 90 минут
+
+Цель: увидеть бизнес-процесс между сервисами с собственными БД без общей
+ACID-транзакции. Студенты уже знакомы с Event Storming и Strangler Fig.
+Основной пример: **оплата прошла → Stock отказал → Saga инициировала возврат
+→ деньги возвращены → заказ отменён**.
+
+## Подготовка преподавателя
+
+Требуются Docker Desktop/Engine с Compose v2, Python 3.9+, `make`, браузер.
+Go 1.23+ нужен для локальных тестов, но все процессы запускаются в Docker.
+Первый запуск загружает образы и зависимости; выполните его до занятия.
+Предусмотрите около 4 ГБ памяти Docker. Никаких настоящих платежей нет.
+
+```bash
+# Остановить прежний стенд, если он работает: порты пересекаются.
+docker compose down
+# Также остановить локальные Order/Payment/Stock от прошлого семинара.
+make saga-up
+make saga-e2e
+```
+
+`.env` для Saga не нужен; Compose содержит безопасные демонстрационные значения.
+`compose.saga.yaml` — самостоятельная конфигурация, её не нужно объединять
+через `-f docker-compose.yaml -f compose.saga.yaml`. Старый Compose сохранён.
+Все дальнейшие команды выполняются из корня проекта/распакованного архива.
+
+Адреса: React `http://localhost:5173`, Gateway `:8080`, Stock `:8082`, Order
+`:8083`, Payment `:8084`, PostgreSQL `localhost:15432`, Kafka `localhost:19092`.
+Swagger: `http://localhost:8080/swagger/index.html` и `:8083/swagger/index.html`.
+Порты опубликованы только на loopback. Saga-стенд не запускает Jaeger/Grafana/
+Prometheus: для занятия достаточно JSON-логов и SQL.
+
+В одном терминале оставьте:
+
+```bash
+make saga-logs
+```
+
+В другом запускайте демонстрации. Они автоматически ждут готовности Compose,
+поллят условия с дедлайном, печатают историю и проверяют три БД. Фиксированного
+«подождать пять секунд и считать успехом» нет. `SUCCESS` означает проверенные
+бизнес-эффекты, `FAILURE` и ненулевой exit code — несоответствие/таймаут.
+Для уже работающего стенда можно пропустить повторный build/up:
+`python3 scripts/saga_demo.py compensation --no-start`.
+
+## Исследованная архитектура и принятое решение
+
+Изначально репозиторий содержит Monolith, Gateway, React, Stock, Payment, Order,
+один Go-модуль, Kafka KRaft и наблюдаемость. PostgreSQL и Outbox не было.
+Order резервировал Stock синхронным HTTP-вызовом, затем публиковал
+`order-created`; Payment отвечал `payment-completed`. Данные — process-local map.
+Бизнес-правила находятся в `internal/domain` и `internal/usecase`, адаптеры —
+`repository`, `delivery`/`handler`; `main.go` выполняет ручную сборку зависимостей.
+Тесты проверяли Strangler-маршруты, оплату, конкурентный резерв, OTel headers.
+`cmd/lab` переключает четыре флага предыдущей миграции:
+`ROUTE_STOCK_TO_MICROSERVICE`, `ROUTE_ORDER_TO_MICROSERVICE`,
+`ASYNC_PAYMENT_ACTIVE`, `MONOLITH_STOCK_BRIDGE_ACTIVE`.
+
+Целевое изменение: тот же Order становится оркестратором в usecase-слое;
+существующие Payment/Stock получают Kafka-команды и SQL-репозитории.
+`SAGA_ENABLED` выбирает этот режим в трёх `main.go`; при false прежний режим
+сохранён. Создавать четвёртый сервис-оркестратор не требуется: процесс является
+частью оформления заказа. Gateway/API/React переиспользованы. Набор проверок:
+машина состояний, прежние тесты, реальные Kafka/SQL сценарии A–D и отказ возврата,
+перезапуск участников, распаковка единого ZIP, чистый Compose-запуск.
+
+Используется один PostgreSQL контейнер с тремя **разными базами и пользователями**.
+Это экономит ресурсы ноутбука. Роли не могут подключаться к чужим БД.
+Сервисы не делают межбазовых SQL-запросов. Скрипт преподавателя читает каждую
+БД её владельцем, чтобы показать результат, и не участвует в бизнес-процессе.
+
+```mermaid
+flowchart LR
+    UI[React :5173] --> GW[API Gateway :8080]
+    GW --> O[Order :8083\nusecase.Orchestrator]
+    GW --> S[Stock :8082]
+    O -->|ChargePayment / RefundPayment| K[(Kafka)]
+    O -->|ReserveStock| K
+    K -->|payment commands| P[Payment :8084]
+    K -->|stock commands| S
+    P -->|payment events| K
+    S -->|stock events| K
+    K -->|saga.events.v1| O
+    O --- OD[(PostgreSQL orders\norders / sagas / receipts / history)]
+    P --- PD[(PostgreSQL payments\npayments / receipts)]
+    S --- SD[(PostgreSQL stock\nproducts / receipts)]
+```
+
+## Часть 1. Основы Event-Driven Architecture — 20 минут
+
+**0–5 минут.** Вспомните Event Storming. «Оплата проведена», «Товар
+зарезервирован» — уже выделенные бизнес-факты. Теперь превращаем их в контракты
+и передаём между процессами. При синхронном HTTP вызывающий ждёт ответ и зависит
+от доступности вызываемого прямо сейчас. При асинхронном обмене producer пишет
+сообщение в Kafka, consumer обработает его позже. HTTP 202 подтверждает приём
+заказа, а итог читается отдельным GET.
+
+**5–10 минут. Command vs Event.** Команда просит выполнить действие:
+`ChargePayment`, `ReserveStock`, `RefundPayment`. У неё конкретный исполнитель,
+который может отказать. Событие фиксирует результат:
+`PaymentCharged`, `StockReservationFailed`, `PaymentRefunded`.
+Оркестратор отправляет команды; участники публикуют события. Другие подписчики
+могут независимо читать факты для аналитики/уведомлений. Команда «верни деньги»
+сама по себе ещё не доказывает, что деньги возвращены.
+
+Откройте `internal/sagacontract/message.go` и `docs/SAGA_CONTRACTS.md`.
+Покажите `event_id`, `order_id`, `saga_id`, `message_type`, `schema_version`,
+`created_at`, `data`. `order_id` связывает данные участника, `saga_id` — процесс,
+`event_id` — сообщение. Все денежные значения — целые копейки.
+
+**10–15 минут. Kafka.** Producer отправляет в топик, consumer читает партицию
+и подтверждает offset. Consumer group распределяет партиции между экземплярами
+одного логического подписчика. Разные группы читают один поток независимо.
+Топики команд разделены по исполнителям; ответы участников идут в
+`saga.events.v1`. Группа Order — `saga-order-v1`, Payment — `saga-payment-v1`,
+Stock — `saga-stock-v1`. Kafka key — `saga_id`; в стенде одна партиция на топик.
+
+Kafka хранит журнал, поддерживает порядок внутри партиции и повторное чтение.
+Порядка между топиками и общей транзакции с нашими PostgreSQL БД нет.
+Повторы возможны. Один брокер с replication factor 1 выбран для ноутбука,
+а не для отказоустойчивого production. Первичные материалы:
+[Kafka design](https://kafka.apache.org/39/design/design/),
+[kafka-go explicit commits](https://github.com/segmentio/kafka-go#explicit-commits).
+
+**15–20 минут. Eventual Consistency.** Между HTTP 202 и финальным событием
+заказ находится в `PENDING`. Payment уже может иметь `CHARGED`, пока Order
+ещё ждёт его сообщение. Это наблюдаемое промежуточное состояние. «Eventually»
+означает сходимость при успешной доставке и обработке; оно не исправляет
+потерянное сообщение автоматически. Плюсы EDA: меньше временной связанности,
+независимые подписчики, буферизация. Минусы: задержка видимости результата,
+повторы, восстановление после сбоя, эволюция схем и более сложная диагностика.
+
+## Часть 2. Зачем нужна Saga — 15 минут
+
+**20–25 минут.** Нарисуйте три локальные транзакции. Order сохраняет заказ,
+Saga и её историю. Payment сохраняет результат оплаты и кеш ответа. Stock
+сохраняет резерв и уменьшение остатка. Каждый commit относится только к одной БД.
+`*sql.Tx` явно передаётся в методы репозитория; в `context.Context` его нет.
+
+**25–30 минут.** Спросите: «Что откатит commit Payment, если Stock откажет?»
+Общей транзакции нет. Простое изменение `orders.status` не возвращает деньги.
+Нужна новая операция Payment — возврат. Она имеет собственные правила, может
+завершиться ошибкой и оставляет историю. Это **компенсация**, а не SQL rollback.
+
+**30–35 минут.** Оплата → резерв выбраны специально, чтобы сделать компенсацию
+видимой. Для настоящего продукта часто разумнее авторизовать средства, затем
+резервировать и только после этого списывать. Возврат может занимать время,
+иметь комиссию и не отменять все последствия исходной операции. Наш платёж —
+изменение учебной записи в БД, никакой внешний провайдер не вызывается.
+
+## Часть 3. Orchestrated Saga — 15 минут
+
+**35–40 минут.** Откройте `order-service/internal/usecase/saga.go`:
+`Orchestrator.Create`, `Orchestrator.Handle`; затем
+`order-service/internal/domain/saga.go`: `Saga.Start`, `Saga.Apply`.
+Usecase управляет локальной транзакцией и публикацией. Домен определяет
+переход и следующую команду; Kafka handler только декодирует DTO и делегирует.
+Оркестратор знает последовательность, участники знают только свои операции.
+
+**40–45 минут.** Разберите таблицу. Статус заказа остаётся `PENDING`, пока
+не получено финальное подтверждение.
+
+| Текущее состояние | Факт / действие | Следующее состояние | Следующая команда / заказ |
+|---|---|---|---|
+| PENDING | Start | PAYMENT_PENDING | ChargePayment |
+| PAYMENT_PENDING | PaymentCharged | STOCK_PENDING | ReserveStock |
+| PAYMENT_PENDING | PaymentFailed | CANCELLED | заказ CANCELLED |
+| STOCK_PENDING | StockReserved | COMPLETED | заказ CONFIRMED |
+| STOCK_PENDING | StockReservationFailed | COMPENSATING | RefundPayment |
+| COMPENSATING | PaymentRefunded | CANCELLED | заказ CANCELLED |
+| COMPENSATING | PaymentRefundFailed | COMPENSATION_FAILED | заказ PENDING; нужен разбор |
+
+Неизвестный/недопустимый переход возвращает `ErrTransition` без изменения
+состояния. Уже обработанный факт отсекается устойчивым receipt до `Apply`.
+Отдельное `PAYMENT_COMPLETED` не хранится: принятие `PaymentCharged` и решение
+отправить `ReserveStock` составляют один локальный переход.
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING
+    PENDING --> PAYMENT_PENDING: Start / ChargePayment
+    PAYMENT_PENDING --> STOCK_PENDING: PaymentCharged / ReserveStock
+    PAYMENT_PENDING --> CANCELLED: PaymentFailed
+    STOCK_PENDING --> COMPLETED: StockReserved
+    STOCK_PENDING --> COMPENSATING: StockReservationFailed / RefundPayment
+    COMPENSATING --> CANCELLED: PaymentRefunded
+    COMPENSATING --> COMPENSATION_FAILED: PaymentRefundFailed
+    COMPLETED --> [*]
+    CANCELLED --> [*]
+    COMPENSATION_FAILED --> [*]
+```
+
+**45–50 минут.** Сравните orchestration и choreography. Здесь один usecase
+говорит, что делать дальше; полную цепочку легко прочитать. При хореографии
+каждый участник сам реагирует на факты, а процесс распределён между ними.
+Для коротких независимых реакций это удобно; для процесса с компенсацией
+центральная последовательность упрощает контроль. Это не универсальный engine:
+нет регистрации шагов, рефлексии, Temporal/Camunda или DSL.
+
+## Часть 4. Live Demo — 30 минут
+
+### 50–56 минут. A — успешная Saga
+
+```bash
+make saga-demo-happy
+```
+
+Скрипт создаёт `{"product_id":1,"quantity":1}`. Покажите HTTP 202 с `PENDING`,
+затем историю `PAYMENT_PENDING → STOCK_PENDING → COMPLETED`.
+В SQL: Order `CONFIRMED`, Payment `CHARGED`, `charges=1`, `refunds=0`,
+Stock `RESERVED`, остаток уменьшен на 1. Скрипт проверяет фактический остаток
+относительно всех успешных резервов, поэтому демонстрации можно повторять.
+Ожидаемый результат — `SUCCESS happy`.
+
+```mermaid
+sequenceDiagram
+    participant C as Client/Gateway
+    participant O as Order/Orchestrator
+    participant K as Kafka
+    participant P as Payment
+    participant S as Stock
+    C->>O: POST /api/v1/orders (product_id=1)
+    O->>O: local commit: PENDING, PAYMENT_PENDING
+    O->>K: ChargePayment
+    O-->>C: 202 PENDING + saga_id
+    K->>P: ChargePayment
+    P->>P: local commit: CHARGED, charges=1, receipt
+    P->>K: PaymentCharged
+    K->>O: PaymentCharged
+    O->>O: local commit: STOCK_PENDING + receipt
+    O->>K: ReserveStock
+    K->>S: ReserveStock
+    S->>S: local commit: available-1, RESERVED, receipt
+    S->>K: StockReserved
+    K->>O: StockReserved
+    O->>O: local commit: COMPLETED, order CONFIRMED
+    C->>O: GET /api/v1/orders/{id}
+    O-->>C: CONFIRMED, COMPLETED
+```
+
+Исходники: `Saga.Apply`; `payment-service/internal/usecase/saga.go: Handle`,
+`payment-service/internal/domain/saga.go: Charge`;
+`stock-service/internal/usecase/saga.go: Handle`,
+`stock-service/internal/domain/saga.go: ReserveAvailable`.
+
+### 56–61 минут. B — оплата отклонена
+
+```bash
+make saga-demo-payment-failed
+```
+
+Запрос: `{"product_id":1,"quantity":1,"demo_failure":"payment"}`.
+В логах: `ChargePayment → PaymentFailed`, затем Order `CANCELLED`.
+SQL: Payment `DECLINED`, `charges=0`, `refunds=0`; записи Stock для заказа нет.
+Скрипт дополнительно проверяет отсутствие решения `ReserveStock` в истории.
+Ожидается `SUCCESS payment-failed`. Код: `SagaPayment.Charge` и ветка
+`PaymentFailed` в `Saga.Apply`. Бизнес-отказ подтверждается и не повторяется
+как техническая ошибка.
+
+### 61–71 минут. C — главная демонстрация компенсации
+
+```bash
+make saga-demo-compensation
+```
+
+Товар 2 имеет нулевой остаток, цена положительная. Никакой ручной правки БД.
+Скрипт выводит точные order_id/saga_id, а затем проверенную последовательность:
+
+```text
+SagaStarted           -> PAYMENT_PENDING -> ChargePayment
+PaymentCharged        -> STOCK_PENDING   -> ReserveStock
+StockReservationFailed-> COMPENSATING    -> RefundPayment
+PaymentRefunded       -> CANCELLED      -> (конец)
+SUCCESS compensation
+```
+
+Объясняйте каждую строку: Payment сначала зафиксировал списание; Stock отказал
+без уменьшения остатка; **Order**, получив отказ, решил вернуть деньги;
+Payment подтвердил возврат; только теперь Order отменил заказ.
+
+```mermaid
+sequenceDiagram
+    participant C as Client/Gateway
+    participant O as Order/Orchestrator
+    participant K as Kafka
+    participant P as Payment
+    participant S as Stock
+    C->>O: POST /api/v1/orders (product_id=2)
+    O->>O: commit PENDING, PAYMENT_PENDING
+    O->>K: ChargePayment
+    O-->>C: 202 PENDING
+    K->>P: ChargePayment
+    P->>P: commit CHARGED, charges=1
+    P->>K: PaymentCharged
+    K->>O: PaymentCharged
+    O->>O: commit STOCK_PENDING
+    O->>K: ReserveStock
+    K->>S: ReserveStock
+    S->>S: available=0; commit REJECTED, receipt
+    S->>K: StockReservationFailed
+    K->>O: StockReservationFailed
+    O->>O: commit COMPENSATING
+    O->>K: RefundPayment
+    K->>P: RefundPayment
+    P->>P: commit REFUNDED, refunds=1
+    P->>K: PaymentRefunded
+    K->>O: PaymentRefunded
+    O->>O: commit CANCELLED, order CANCELLED
+```
+
+В логах ищите JSON-поля `service`, `order_id`, `saga_id`, `message_type`,
+`saga_state`, `next_command`, `result`, `duplicate`. Пример перехода:
+
+```json
+{"msg":"saga transition","service":"order-service","order_id":"order-...","saga_id":"saga-...","message_type":"StockReservationFailed","saga_state":"COMPENSATING","next_command":"RefundPayment","duplicate":false}
+```
+
+Payment/Stock не владеют текущим состоянием Saga, поэтому `saga_state` у них
+пустое; Payment дополнительно пишет `payment_state`. Это не распределённая
+копия состояния оркестратора.
+
+Код: `Saga.Apply` (ветки `StockReservationFailed`, `PaymentRefunded`),
+`Orchestrator.Handle`, `SagaPayment.Refund`, SQL `Save` каждого участника.
+Покажите три SQL-запроса, при желании подставив напечатанный ID в WHERE:
+
+```bash
+docker compose -f compose.saga.yaml exec -T -e PGPASSWORD=orders_demo postgres psql -h 127.0.0.1 -U orders -d orders -c 'SELECT o.id,o.status,s.state,s.reason FROM orders o JOIN sagas s ON s.order_id=o.id;'
+docker compose -f compose.saga.yaml exec -T -e PGPASSWORD=payments_demo postgres psql -h 127.0.0.1 -U payments -d payments -c 'SELECT order_id,state,charges,refunds FROM payments;'
+docker compose -f compose.saga.yaml exec -T -e PGPASSWORD=stock_demo postgres psql -h 127.0.0.1 -U stock -d stock -c 'SELECT order_id,status,quantity FROM stock_receipts; SELECT id,available FROM products;'
+```
+
+Ожидаемо: `CANCELLED/CANCELLED`, `REFUNDED/1/1`, `REJECTED/1`, товар 2 — 0.
+Полная история:
+
+```bash
+docker compose -f compose.saga.yaml exec -T -e PGPASSWORD=orders_demo postgres psql -h 127.0.0.1 -U orders -d orders -c 'SELECT saga_id,state,message_type,next_command FROM saga_history ORDER BY seq;'
+```
+
+### 71–78 минут. D — дубли сообщений
+
+```bash
+make saga-demo-duplicate
+```
+
+Скрипт проводит успешную покупку, повторно публикует `PaymentCharged`,
+`ChargePayment`, `ReserveStock`, `StockReserved`, включая новые `event_id`.
+Затем проводит компенсацию и повторяет `RefundPayment`/`PaymentRefunded`.
+Повторы отправляются настоящим Kafka producer, не прямым вызовом usecase.
+Скрипт ждёт роста `deliveries` в БД нужного consumer: это доказывает обработку
+дубля. Проверяется неизменность истории и бизнес-данных: списание/возврат по 1.
+Вывод: `SUCCESS duplicate: charges=1, refunds=1; history unchanged`.
+
+Код: Order `SagaStore.Receipt` перед `Saga.Apply`, Payment `SagaStore.Result`,
+Stock `SagaStore.Result`; `scripts/saga_demo.py: duplicate, replay, verify`.
+Повтор может вызвать повторную отправку уже сохранённого решения, но участник
+вернёт кешированный результат. Это идемпотентность, а не exactly-once delivery.
+
+### 78–80 минут. Ошибка компенсации
+
+```bash
+make saga-demo-refund-failed
+```
+
+Вход: товар 2, `demo_failure=refund`. SQL: Payment `REFUND_FAILED`, `charges=1`,
+`refunds=0`; Saga `COMPENSATION_FAILED`; заказ остаётся `PENDING`.
+Ожидается `SUCCESS refund-failed`: проверка корректного отрицательного результата.
+Покажите, почему помечать такой заказ «успешно отменён и деньги возвращены»
+было бы ошибкой. Автоматического повторного возврата/ручного UI здесь нет.
+
+## Часть 5. Обсуждение — 10 минут
+
+**80–90 минут.** Вопросы и ориентиры для ответа:
+
+1. Чем событие отличается от команды? Факт уже произошёл, команда только просит действие.
+2. Почему оркестратор знает порядок? Это владелец целого процесса оформления заказа.
+3. Чем Saga отличается от ACID-транзакции? Локальные commit уже видимы; общей изоляции нет.
+4. Почему возврат — не rollback? Это новая бизнес-операция со своим результатом и отказами.
+5. Сервис упал после БД, до Kafka — что дальше? Без повторной доставки/Outbox возможна остановка процесса.
+6. Зачем идемпотентность? Сбой подтверждения/публикации может привести к повтору уже выполненного действия.
+7. Когда choreography, когда orchestration? Независимые реакции против явной последовательности с компенсациями.
+8. Что оставлено для Outbox и Retry? Атомарное сохранение намерения отправить, relay, backoff, DLQ, таймауты и сверка зависших процессов.
+
+## Транзакции и пределы надёжности
+
+Домен не импортирует SQL/Kafka/HTTP. Usecase начинает `*sql.Tx`, явно передаёт
+его репозиториям и вызывает commit. Kafka handler не содержит переходов.
+Дедупликация и бизнес-эффект хранятся в одной БД. Kafka offset подтверждается
+после commit и успешной публикации результата; ошибка повторяет тот же offset.
+Логика транспорта уже существовала в `internal/bus/kafka.go` и переиспользована.
+
+Результаты/решения кешируются для повторной публикации при redelivery.
+Это не полноценный Outbox: фонового relay нет. Остаётся разрыв DB commit →
+publish, особенно после первого HTTP POST, где нет входящего Kafka offset для
+восстановления. При такой аварии Saga может застрять; автоматического timeout,
+reconciliation и повторной отправки первой команды не реализовано.
+Эту границу нельзя выдавать за production-гарантию. Следующее занятие — Outbox.
+
+Технический сбой БД/Kafka возвращает ошибку и блокирует текущий offset до
+успешного повтора. Он не превращается в PaymentFailed/StockReservationFailed.
+Poison message/недопустимый переход тоже блокирует эту учебную партицию:
+инспектируют логи, исправляют причину или явно сбрасывают стенд. Полноценной
+политики Retry/DLQ нет. Один consumer обрабатывает последовательно.
+
+## Проверки, повторение и учебные архивы
+
+```bash
+go test ./...
+go test -race ./...
+go test -tags=acceptance ./order-service/...
+go vet ./...
+make saga-acceptance
+make saga-integration
+make saga-e2e
+make saga-zip
+```
+
+`scripts/saga_demo.py` — полноценная интеграционная/E2E проверка с настоящими
+Kafka и PostgreSQL. `saga_test.go` в доменах проверяют исходы, переходы и
+недопустимые действия. Дополнительные integration-тесты usecase включаются
+через `make saga-integration` при работающем стенде. Они проверяют ошибку
+публикации после commit, повтор из нового экземпляра приложения и конкурентные
+дубли оплаты, используя PostgreSQL и простой fake producer.
+
+`dist/godelivery-saga.zip` — один полностью реализованный рабочий проект.
+Архив не содержит `.git`, `.env`, секретов, бинарников, `node_modules` и
+временных файлов. Сборщик использует список исходных каталогов и постоянные
+timestamp/права; повторная упаковка неизменённых файлов даёт тот же SHA-256.
+Упаковка работает и из распакованного проекта без Git.
+
+Повторные сценарии используют новые ID и не требуют очистки. Обычная остановка
+`make saga-down` сохраняет данные. **Полный сброс удаляет учебные данные
+PostgreSQL и Kafka только проекта godelivery-saga**:
+
+```bash
+make saga-reset
+make saga-up
+make saga-e2e
+```
+
+Для проверки архива с чистого состояния остановите исходную копию, распакуйте
+ZIP во временную папку, выполните там `make saga-reset`, `make saga-up`,
+`make saga-e2e`. Имя Compose-проекта фиксировано, поэтому две копии одновременно
+не запускают. Для возврата к Strangler: `make saga-down`, затем прежний README.
+
+Если запуск не удался: `docker compose -f compose.saga.yaml ps -a`, затем
+`docker compose -f compose.saga.yaml logs --tail=100 postgres kafka order-service
+payment-service stock-service`. Неготовность БД устраняется healthcheck и
+миграцией до `/ready`; после изменения схемы этой версии нужен явный учебный
+сброс, существующий volume автоматически не удаляется.

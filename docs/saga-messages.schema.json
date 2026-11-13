@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://godelivery.example/schemas/saga-message-v1.json",
+  "title": "GoDelivery Saga Message v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event_id", "saga_id", "order_id", "message_type", "schema_version", "created_at", "data"],
+  "properties": {
+    "event_id": {"type": "string", "minLength": 1, "maxLength": 150},
+    "saga_id": {"type": "string", "minLength": 1, "maxLength": 100},
+    "order_id": {"type": "string", "minLength": 1, "maxLength": 100},
+    "message_type": {"enum": ["ChargePayment", "RefundPayment", "ReserveStock", "PaymentCharged", "PaymentFailed", "StockReserved", "StockReservationFailed", "PaymentRefunded", "PaymentRefundFailed"]},
+    "schema_version": {"const": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["product_id", "quantity", "amount_cents"],
+      "properties": {
+        "product_id": {"type": "integer", "minimum": 1},
+        "quantity": {"type": "integer", "minimum": 1, "maximum": 10},
+        "amount_cents": {"type": "integer", "minimum": 1},
+        "demo_failure": {"enum": ["payment", "refund"]},
+        "reason": {"type": "string"}
+      }
+    }
+  }
+}

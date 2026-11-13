@@ -26,9 +26,9 @@ func (h *Handler) Register(r *gin.Engine) {
 // @Tags orders
 // @Accept json
 // @Produce json
-// @Param order body contract.CreateOrder true "Товар и количество"
+// @Param order body contract.SagaCreateOrder true "Товар и количество; demo_failure принимается только при SAGA_ENABLED и SAGA_DEMO_FAILURES"
 // @Success 201 {object} contract.Order "Локальная оплата завершена"
-// @Success 202 {object} contract.Order "Заказ принят; оплата через Kafka"
+// @Success 202 {object} contract.SagaOrder "Заказ принят; saga_id и saga_state присутствуют в режиме Saga"
 // @Failure 400 {object} contract.APIError
 // @Failure 404 {object} contract.APIError
 // @Failure 409 {object} contract.APIError
@@ -59,7 +59,7 @@ func (h *Handler) Create(c *gin.Context) {
 // @Tags orders
 // @Produce json
 // @Param id path string true "ID заказа"
-// @Success 200 {object} contract.Order
+// @Success 200 {object} contract.SagaOrder "В режиме Strangler поля Saga отсутствуют"
 // @Failure 404 {object} contract.APIError
 // @Router /api/v1/orders/{id} [get]
 func (h *Handler) Get(c *gin.Context) {

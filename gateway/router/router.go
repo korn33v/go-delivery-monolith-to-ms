@@ -86,9 +86,9 @@ func (g *Gateway) StockRead(c *gin.Context) {
 // @Tags orders
 // @Accept json
 // @Produce json
-// @Param order body contract.CreateOrder true "Товар и количество"
+// @Param order body contract.SagaCreateOrder true "Товар и количество; demo_failure только в учебном режиме Saga"
 // @Success 201 {object} contract.Order
-// @Success 202 {object} contract.Order
+// @Success 202 {object} contract.SagaOrder
 // @Failure 400 {object} contract.APIError
 // @Failure 409 {object} contract.APIError
 // @Failure 501 {object} contract.APIError
@@ -102,7 +102,7 @@ func (g *Gateway) CreateOrder(c *gin.Context) { g.orders(c) }
 // @Tags orders
 // @Produce json
 // @Param id path string true "ID заказа"
-// @Success 200 {object} contract.Order
+// @Success 200 {object} contract.SagaOrder "Поля Saga присутствуют при SAGA_ENABLED"
 // @Failure 404 {object} contract.APIError
 // @Failure 502 {object} contract.APIError
 // @Router /api/v1/orders/{id} [get]

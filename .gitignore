@@ -1,0 +1,8 @@
+dist/
+.env
+frontend/node_modules/
+frontend/dist/
+*.test
+coverage.out
+.DS_Store
+__pycache__/

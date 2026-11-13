@@ -9,6 +9,9 @@ import (
 	"example.com/strangler/internal/config"
 	"example.com/strangler/internal/contract"
 	"example.com/strangler/internal/observability"
+	"example.com/strangler/internal/postgres"
+	"example.com/strangler/internal/sagacontract"
+	"example.com/strangler/internal/sagaruntime"
 	"example.com/strangler/internal/server"
 	"example.com/strangler/internal/stockclient"
 	_ "example.com/strangler/order-service/docs"
@@ -41,6 +44,9 @@ func run() error {
 		return err
 	}
 	defer telemetry.Shutdown()
+	if cfg.Bool("SAGA_ENABLED", false) {
+		return runSaga(ctx, cfg, telemetry)
+	}
 	setup, stop := context.WithTimeout(ctx, 15*time.Second)
 	err = bus.EnsureTopics(setup, cfg.Brokers())
 	stop()
@@ -70,4 +76,24 @@ func run() error {
 	}()
 	defer func() { stopConsumer(); workers.Wait() }()
 	return server.Run(ctx, cfg.String("ORDER_ADDR", ":8083"), r)
+}
+
+func runSaga(ctx context.Context, cfg *config.Config, t *observability.Telemetry) error {
+	db, err := postgres.Open(ctx, cfg.String("DATABASE_URL", "postgres://orders:orders_demo@localhost:15432/orders?sslmode=disable"), repository.SagaSchema)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	p, err := sagaruntime.Messaging(ctx, cfg, t, "order-service")
+	if err != nil {
+		return err
+	}
+	defer p.Close()
+	service := usecase.NewOrchestrator(&repository.SagaStore{DB: db}, p, cfg.Bool("SAGA_DEMO_FAILURES", false))
+	h := &handler.SagaHandler{Service: service}
+	r := t.Router("order-service")
+	r.POST("/api/v1/orders", h.Create)
+	r.GET("/api/v1/orders/:id", h.Get)
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json")))
+	return sagaruntime.Serve(ctx, cfg, t, db, r, cfg.String("ORDER_ADDR", ":8083"), sagacontract.Events, "saga-order-v1", h.Event)
 }
