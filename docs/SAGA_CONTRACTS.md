@@ -59,6 +59,12 @@ Readiness не доказывает завершение назначения co
 | `saga.events.v1` | `PaymentCharged`, `PaymentFailed`, `PaymentRefunded`, `PaymentRefundFailed` | Payment | `saga-order-v1` (Order) |
 | `saga.events.v1` | `StockReserved`, `StockReservationFailed` | Stock | `saga-order-v1` (Order) |
 
+Для учебного задания подготовлены `ReleaseStock` в `saga.stock.commands.v1`
+и `StockReleased` в `saga.events.v1`. Они используют те же идентификаторы
+и данные операции, что и резервирование. В стартовом процессе команда
+снятия резерва не отправляется. Реализация операции и переходов по её
+результату входит в [практикум](../STUDENT_TASK.md).
+
 Все топики имеют одну партицию и replication factor 1. Kafka key — `saga_id`.
 Так сообщения одной Saga попадают в одну партицию. Глобального порядка между
 разными топиками нет. Все команды адресованы конкретному участнику. События

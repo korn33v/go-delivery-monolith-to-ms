@@ -27,6 +27,7 @@ func (s *SagaService) Handle(ctx context.Context, m sagacontract.Message) error 
 		return messageerror.Permanent(err)
 	}
 	if m.Type != sagacontract.ReserveStock {
+		// TODO для студентов: обработать ReleaseStock отдельной операцией.
 		return messageerror.Permanent(errors.New("stock expects ReserveStock"))
 	}
 	tx, err := s.Store.DB.BeginTx(ctx, nil)

@@ -88,6 +88,14 @@ saga-integration:
 saga-zip:
 	python3 scripts/package_saga.py
 
+.PHONY: saga-assignment saga-assignment-stock saga-assignment-e2e
+saga-assignment:
+	go test -tags=saga_assignment ./...
+saga-assignment-stock:
+	go test -tags=saga_assignment,saga_integration ./stock-service/internal/usecase -run '^TestAssignmentReleaseRestoresInventory$$'
+saga-assignment-e2e: saga-up
+	python3 scripts/saga_assignment.py all
+
 .PHONY: saga-demo-outbox saga-demo-dlq saga-reliability
 saga-demo-outbox:
 	python3 scripts/saga_reliability.py outbox

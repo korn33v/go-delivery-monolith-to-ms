@@ -23,7 +23,7 @@ func (unavailableOutbox) Enqueue(context.Context, *sql.Tx, sagacontract.Message)
 
 func TestStockReservationAndOutboxAreAtomic(t *testing.T) {
 	ctx := context.Background()
-	db := testdb.Open(t, "postgres://stock:stock_demo@localhost:15432/stock?sslmode=disable", repository.SagaSchema, outbox.Schema, deadletter.Schema)
+	db := testdb.Open(t, "postgres://stock:stock_demo@localhost:15432/stock?sslmode=disable", repository.SagaSchema, outbox.Schema, deadletter.Schema, repository.ReleaseSchema)
 	store := &repository.SagaStore{DB: db}
 	m := sagacontract.New("saga-test", "order-test", sagacontract.ReserveStock, sagacontract.Data{ProductID: 1, Quantity: 2, AmountCents: 19998000})
 	service := NewSaga(store, unavailableOutbox{})

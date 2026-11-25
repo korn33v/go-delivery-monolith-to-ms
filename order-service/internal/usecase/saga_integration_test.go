@@ -1,4 +1,4 @@
-//go:build saga_integration
+//go:build saga_integration && !saga_assignment
 
 package usecase
 

@@ -9,7 +9,7 @@
     "event_id": {"type": "string", "minLength": 1, "maxLength": 150},
     "saga_id": {"type": "string", "minLength": 1, "maxLength": 100},
     "order_id": {"type": "string", "minLength": 1, "maxLength": 100},
-    "message_type": {"enum": ["ChargePayment", "RefundPayment", "ReserveStock", "PaymentCharged", "PaymentFailed", "StockReserved", "StockReservationFailed", "PaymentRefunded", "PaymentRefundFailed"]},
+    "message_type": {"enum": ["ChargePayment", "RefundPayment", "ReserveStock", "ReleaseStock", "PaymentCharged", "PaymentFailed", "StockReserved", "StockReservationFailed", "StockReleased", "PaymentRefunded", "PaymentRefundFailed"]},
     "schema_version": {"const": 1},
     "created_at": {"type": "string", "format": "date-time"},
     "data": {

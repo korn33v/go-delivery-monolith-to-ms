@@ -77,7 +77,7 @@ func (s *Orchestrator) Handle(ctx context.Context, event sagacontract.Message) e
 		return messageerror.Permanent(err)
 	}
 	switch event.Type {
-	case sagacontract.PaymentCharged, sagacontract.PaymentFailed, sagacontract.StockReserved, sagacontract.StockReservationFailed, sagacontract.PaymentRefunded, sagacontract.PaymentRefundFailed:
+	case sagacontract.PaymentCharged, sagacontract.PaymentFailed, sagacontract.StockReserved, sagacontract.StockReservationFailed, sagacontract.StockReleased, sagacontract.PaymentRefunded, sagacontract.PaymentRefundFailed:
 	default:
 		return messageerror.Permanent(errors.New("order expects a participant event"))
 	}

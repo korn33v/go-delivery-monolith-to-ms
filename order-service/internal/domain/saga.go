@@ -32,11 +32,13 @@ func (s *Saga) Start() (string, error) {
 	if s.State != Pending {
 		return "", ErrTransition
 	}
+	// TODO для студентов: изменить первую операцию по User Story.
 	s.State = PaymentPending
 	return "ChargePayment", nil
 }
 
 func (s *Saga) Apply(event, reason string) (string, error) {
+	// TODO для студентов: изменить переходы и обработать результат снятия резерва.
 	switch {
 	case s.State == PaymentPending && event == "PaymentCharged":
 		s.State = StockPending

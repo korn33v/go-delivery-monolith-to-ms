@@ -16,6 +16,9 @@ import (
 //go:embed saga.sql
 var SagaSchema string
 
+//go:embed saga_release.sql
+var ReleaseSchema string
+
 type SagaStore struct{ DB *sql.DB }
 
 func (r *SagaStore) Lock(ctx context.Context, tx *sql.Tx, id int) (domain.Product, error) {

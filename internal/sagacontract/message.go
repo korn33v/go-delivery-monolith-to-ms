@@ -13,12 +13,14 @@ const (
 	ChargePayment          = "ChargePayment"
 	RefundPayment          = "RefundPayment"
 	ReserveStock           = "ReserveStock"
+	ReleaseStock           = "ReleaseStock"
 	PaymentCharged         = "PaymentCharged"
 	PaymentFailed          = "PaymentFailed"
 	PaymentRefunded        = "PaymentRefunded"
 	PaymentRefundFailed    = "PaymentRefundFailed"
 	StockReserved          = "StockReserved"
 	StockReservationFailed = "StockReservationFailed"
+	StockReleased          = "StockReleased"
 )
 
 type Data struct {
@@ -47,7 +49,7 @@ func (m Message) Validate() error {
 		return errors.New("unknown demo failure")
 	}
 	switch m.Type {
-	case ChargePayment, RefundPayment, ReserveStock, PaymentCharged, PaymentFailed, PaymentRefunded, PaymentRefundFailed, StockReserved, StockReservationFailed:
+	case ChargePayment, RefundPayment, ReserveStock, ReleaseStock, PaymentCharged, PaymentFailed, PaymentRefunded, PaymentRefundFailed, StockReserved, StockReservationFailed, StockReleased:
 		return nil
 	default:
 		return errors.New("unknown message type")
@@ -68,7 +70,7 @@ func Topic(kind string) string {
 	switch kind {
 	case ChargePayment, RefundPayment:
 		return PaymentCommands
-	case ReserveStock:
+	case ReserveStock, ReleaseStock:
 		return StockCommands
 	default:
 		return Events

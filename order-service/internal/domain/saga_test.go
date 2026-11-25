@@ -1,3 +1,5 @@
+//go:build !saga_assignment
+
 package domain
 
 import (
