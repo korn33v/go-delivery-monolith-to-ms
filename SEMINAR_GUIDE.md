@@ -8,7 +8,10 @@ ACID-транзакции. Студенты уже знакомы с Event Storm
 В ветке находится задание для совместной работы. Студенты дописывают методы
 `Saga.Start` и `Saga.Apply` в `order-service/internal/domain/saga.go`. Таблица
 состояний и диаграммы ниже задают требования. Раздел Live Demo содержит сценарии
-приёмки. Их ожидаемые финальные состояния относятся к выполненному заданию.
+проверки. Их ожидаемые финальные состояния относятся к выполненному заданию.
+Для самостоятельного часового практикума выдайте [STUDENT_TASK.md](STUDENT_TASK.md).
+Студент сдаёт доменные тесты, Happy Path и компенсацию. В 90-минутном занятии
+остальные демонстрации можно разобрать вместе с группой.
 
 ## Подготовка преподавателя
 
@@ -342,20 +345,10 @@ Payment/Stock не владеют текущим состоянием Saga, по
 
 Код: `Saga.Apply` (ветки `StockReservationFailed`, `PaymentRefunded`),
 `Orchestrator.Handle`, `SagaPayment.Refund`, SQL `Save` каждого участника.
-Покажите три SQL-запроса, при желании подставив напечатанный ID в WHERE:
-
-```bash
-docker compose -f compose.saga.yaml exec -T -e PGPASSWORD=orders_demo postgres psql -h 127.0.0.1 -U orders -d orders -c 'SELECT o.id,o.status,s.state,s.reason FROM orders o JOIN sagas s ON s.order_id=o.id;'
-docker compose -f compose.saga.yaml exec -T -e PGPASSWORD=payments_demo postgres psql -h 127.0.0.1 -U payments -d payments -c 'SELECT order_id,state,charges,refunds FROM payments;'
-docker compose -f compose.saga.yaml exec -T -e PGPASSWORD=stock_demo postgres psql -h 127.0.0.1 -U stock -d stock -c 'SELECT order_id,status,quantity FROM stock_receipts; SELECT id,available FROM products;'
-```
-
-Ожидаемо: `CANCELLED/CANCELLED`, `REFUNDED/1/1`, `REJECTED/1`, товар 2 — 0.
-Полная история:
-
-```bash
-docker compose -f compose.saga.yaml exec -T -e PGPASSWORD=orders_demo postgres psql -h 127.0.0.1 -U orders -d orders -c 'SELECT saga_id,state,message_type,next_command FROM saga_history ORDER BY seq;'
-```
+Скопируйте `order_id` и `saga_id` этого прогона. Покажите запросы к трём
+базам и историю команд для этого заказа по [инструкции студента](STUDENT_TASK.md#sql-для-одного-заказа).
+Ожидаются заказ и Saga `CANCELLED` с причиной `insufficient_stock`, платёж
+`REFUNDED` с одним списанием и одним возвратом, резерв `REJECTED` для товара 2.
 
 ### 71–78 минут. D — дубли сообщений
 
@@ -423,36 +416,33 @@ handler повторяются до трёх записанных попыток
 успешный заказ. Подробный разбор: [docs/RELIABILITY.md](docs/RELIABILITY.md).
 Их можно использовать после основного занятия или в рамках обсуждения.
 
-## Проверки и самостоятельная работа
+## Сдача часового практикума
+
+1. `make saga-acceptance` проходит для всех доменных пакетов.
+2. `make saga-demo-happy` завершается `SUCCESS happy`. Студент показывает для своего заказа оплату, резерв и итоговый статус.
+3. `make saga-demo-compensation` завершается `SUCCESS compensation`. Студент находит решение о возврате в истории и объясняет, какое событие разрешило отменить заказ.
+
+## Полная регрессия для преподавателя или CI
+
+Следующие проверки выполняют на завершённой реализации отдельно от часового
+практикума. Для проверки базовой демонстрации используйте ветку
+`feat_saga_orchectration_demo` в отдельной рабочей копии. Запускайте один стенд
+за раз. На заготовке ожидается RED из раздела подготовки.
 
 ```bash
-go test ./...
+go vet ./...
 go test -race ./...
 go test -tags=acceptance ./order-service/...
-go vet ./...
-make saga-acceptance
+make saga-up
 make saga-integration
 make saga-e2e
 make regression-strangler
 ```
 
-`scripts/saga_demo.py` — полноценная интеграционная/E2E проверка с настоящими
-Kafka и PostgreSQL. `saga_test.go` в доменах проверяют исходы, переходы и
-недопустимые действия. Дополнительные integration-тесты usecase включаются
-через `make saga-integration` при работающем стенде. Они проверяют ошибку
-публикации после commit, повтор из нового экземпляра приложения и конкурентные
-дубли оплаты. Также проверяется атомарность rollback бизнес-данных и Outbox,
-доставка relay и устойчивый DLQ. Используются изолированные SQL-схемы и fake producer.
-
-### Критерии сдачи
-
-- Оба метода в `order-service/internal/domain/saga.go` реализованы. При
-  недопустимом событии состояние и причина остаются прежними.
-- `make saga-acceptance` проходит. Для отказа склада покажите в истории
-  состояние `COMPENSATING`, выданную команду и факт, разрешивший отмену заказа.
-- После `make saga-up` проходят `make saga-integration` и `make saga-e2e`.
-  Объясните, почему при повторе вырос счётчик доставок, а число списаний,
-  возвратов и переходов осталось прежним.
+`make saga-integration` проверяет локальные транзакции в PostgreSQL, включая
+откат при ошибке записи Outbox, повторную доставку и конкурентные дубли оплаты.
+`make saga-e2e` дополнительно проверяет восстановление после сбоя брокера, DLQ
+и трассу Jaeger. `make regression-strangler` проверяет четыре этапа предыдущего семинара.
 
 Повторные сценарии используют новые ID и не требуют очистки. Обычная остановка
 `make saga-down` сохраняет данные. **Полный сброс удаляет учебные данные

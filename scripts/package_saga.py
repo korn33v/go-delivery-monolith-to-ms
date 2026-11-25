@@ -7,7 +7,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 DIRECTORIES = ("internal", "order-service", "payment-service", "stock-service", "monolith",
                "gateway", "frontend", "infra", "cmd", "docs", "scripts")
-ROOT_FILES = ("go.mod", "go.sum", "README.md", "SEMINAR_GUIDE.md", "Makefile", "env.example",
+ROOT_FILES = ("go.mod", "go.sum", "README.md", "SEMINAR_GUIDE.md", "STUDENT_TASK.md", "Makefile", "env.example",
               ".gitignore", ".dockerignore", "docker-compose.yaml", "compose.saga.yaml", "Dockerfile.saga")
 EXTENSIONS = {".go", ".sum", ".mod", ".md", ".yaml", ".yml", ".json", ".sql", ".py", ".txt",
               ".jsx", ".js", ".css", ".html", ".svg", ".conf", ".sh", ".proto"}

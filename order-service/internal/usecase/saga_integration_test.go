@@ -18,10 +18,13 @@ import (
 	"example.com/strangler/order-service/internal/repository"
 )
 
-type unavailableOutbox struct{}
+var errOutboxWrite = errors.New("outbox write failed")
 
-func (unavailableOutbox) Enqueue(context.Context, *sql.Tx, sagacontract.Message) error {
-	return errors.New("outbox write failed")
+type unavailableOutbox struct{ calls int }
+
+func (o *unavailableOutbox) Enqueue(context.Context, *sql.Tx, sagacontract.Message) error {
+	o.calls++
+	return errOutboxWrite
 }
 
 func TestSagaStateAndOutgoingDecisionCommitAtomically(t *testing.T) {
@@ -32,10 +35,11 @@ func TestSagaStateAndOutgoingDecisionCommitAtomically(t *testing.T) {
 	}
 	db := testdb.Open(t, dsn, repository.SagaSchema, outbox.Schema, deadletter.Schema)
 	store := &repository.SagaStore{DB: db}
-	service := NewOrchestrator(store, unavailableOutbox{}, true)
+	initialOutbox := &unavailableOutbox{}
+	service := NewOrchestrator(store, initialOutbox, true)
 	failed, err := service.Create(ctx, domain.CreateOrder{ProductID: 2, Quantity: 1}, "")
-	if err == nil {
-		t.Fatal("expected failed outbox insert")
+	if !errors.Is(err, errOutboxWrite) || initialOutbox.calls != 1 {
+		t.Fatalf("create: want one Enqueue and its write error; calls=%d err=%v", initialOutbox.calls, err)
 	}
 	if _, err = store.Get(ctx, failed.Order.ID); !errors.Is(err, domain.ErrNotFound) {
 		t.Fatal("order survived a rolled back outbox write", err)
@@ -55,13 +59,14 @@ func TestSagaStateAndOutgoingDecisionCommitAtomically(t *testing.T) {
 		t.Fatalf("invalid transition not rejected permanently: %v", err)
 	}
 	charged := sagacontract.New(saga.ID, saga.Order.ID, sagacontract.PaymentCharged, sagaData(saga))
-	service.Outbox = unavailableOutbox{}
-	if err = service.Handle(ctx, charged); err == nil {
-		t.Fatal("expected enqueue failure")
+	reservationOutbox := &unavailableOutbox{}
+	service.Outbox = reservationOutbox
+	if err = service.Handle(ctx, charged); !errors.Is(err, errOutboxWrite) || reservationOutbox.calls != 1 {
+		t.Fatalf("PaymentCharged: want one Enqueue and its write error; calls=%d err=%v", reservationOutbox.calls, err)
 	}
-	saved, _ := store.Get(ctx, saga.Order.ID)
-	if saved.State != domain.PaymentPending {
-		t.Fatal("transition committed without outgoing command")
+	saved, err := store.Get(ctx, saga.Order.ID)
+	if err != nil || saved.State != domain.PaymentPending {
+		t.Fatalf("after enqueue failure: state=%s err=%v", saved.State, err)
 	}
 	// A new application instance reads only durable data.
 	service = NewOrchestrator(&repository.SagaStore{DB: db}, &outbox.Store{DB: db}, true)
