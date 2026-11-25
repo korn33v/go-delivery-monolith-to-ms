@@ -13,6 +13,7 @@ import urllib.request
 ROOT = Path(__file__).resolve().parents[1]
 COMPOSE = ["docker", "compose", "-f", str(ROOT / "compose.saga.yaml")]
 API = os.getenv("SAGA_API", "http://localhost:8080")
+EXECUTOR = {"ChargePayment": "Payment", "ReserveStock": "Stock", "RefundPayment": "Payment"}
 
 
 def command(args, **kwargs):
@@ -36,8 +37,14 @@ def row(database, query):
 def http(path, body=None):
     data = None if body is None else json.dumps(body).encode()
     request = urllib.request.Request(API + path, data=data, headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(request, timeout=5) as response:
-        return json.load(response)
+    try:
+        with urllib.request.urlopen(request, timeout=5) as response:
+            expected = 200 if body is None else 202
+            if response.status != expected:
+                raise AssertionError(f"{path}: expected HTTP {expected}, got {response.status}")
+            return json.load(response)
+    except urllib.error.HTTPError as error:
+        raise AssertionError(f"{path}: HTTP {error.code}: {error.read().decode()}") from error
 
 
 def wait_for(description, read, matches, seconds=None):
@@ -69,23 +76,32 @@ def verify(order, scenario):
     wait_for(state, lambda: http("/api/v1/orders/" + order["id"]), lambda o: o["saga_state"] == state)
     result = snapshot(order)
     expected = {
-        "happy": ("CONFIRMED", "CHARGED", 1, 0, "RESERVED", ["PENDING", "PAYMENT_PENDING", "STOCK_PENDING", "COMPLETED"]),
-        "payment-failed": ("CANCELLED", "DECLINED", 0, 0, None, ["PENDING", "PAYMENT_PENDING", "CANCELLED"]),
-        "compensation": ("CANCELLED", "REFUNDED", 1, 1, "REJECTED", ["PENDING", "PAYMENT_PENDING", "STOCK_PENDING", "COMPENSATING", "CANCELLED"]),
-        "refund-failed": ("PENDING", "REFUND_FAILED", 1, 0, "REJECTED", ["PENDING", "PAYMENT_PENDING", "STOCK_PENDING", "COMPENSATING", "COMPENSATION_FAILED"]),
+        "happy": ("CONFIRMED", "CHARGED", 1, 0, "RESERVED", ["PaymentCharged", "StockReserved"]),
+        "payment-failed": ("CANCELLED", "DECLINED", 0, 0, None, ["PaymentFailed"]),
+        "compensation": ("CANCELLED", "REFUNDED", 1, 1, "REJECTED", ["PaymentCharged", "StockReservationFailed", "PaymentRefunded"]),
+        "refund-failed": ("PENDING", "REFUND_FAILED", 1, 0, "REJECTED", ["PaymentCharged", "StockReservationFailed", "PaymentRefundFailed"]),
     }[scenario]
-    status, payment, charges, refunds, stock, history = expected
+    status, payment, charges, refunds, stock, events = expected
     assert result["order"]["status"] == status, result
     assert result["order"]["saga_state"] == state, result
     assert result["payment"]["state"] == payment, result
     assert result["payment"]["charges"] == charges and result["payment"]["refunds"] == refunds, result
     assert (result["stock"]["status"] if result["stock"] else None) == stock, result
-    assert [h["state"] for h in result["history"]] == history, result
+    decisions = {
+        "OrderCreated": ("PENDING", ""),
+        "SagaStarted": ("PAYMENT_PENDING", "ChargePayment"),
+        "PaymentCharged": ("STOCK_PENDING", "ReserveStock"),
+        "PaymentFailed": ("CANCELLED", ""),
+        "StockReserved": ("COMPLETED", ""),
+        "StockReservationFailed": ("COMPENSATING", "RefundPayment"),
+        "PaymentRefunded": ("CANCELLED", ""),
+        "PaymentRefundFailed": ("COMPENSATION_FAILED", ""),
+    }
+    history = [(h["message_type"], h["state"], h["next_command"]) for h in result["history"]]
+    assert history == [(event, *decisions[event]) for event in ["OrderCreated", "SagaStarted", *events]], history
     # Check physical inventory against ALL persisted successful reservations.
     inconsistent = sql("stock", "SELECT count(*) FROM products p WHERE p.available <> (CASE p.id WHEN 1 THEN 1000000 ELSE 0 END) - COALESCE((SELECT sum(quantity) FROM stock_receipts r WHERE r.product_id=p.id AND status='RESERVED'),0)")
     assert inconsistent == "0", "inventory does not match reservations"
-    if scenario == "payment-failed":
-        assert sql("orders", f"SELECT count(*) FROM saga_history WHERE saga_id='{order['saga_id']}' AND next_command='ReserveStock'") == "0"
     return result
 
 
@@ -96,11 +112,14 @@ def run_scenario(scenario):
     if scenario == "refund-failed":
         body["demo_failure"] = "refund"
     order = http("/api/v1/orders", body)
+    assert (order["status"], order["saga_state"]) == ("PENDING", "PAYMENT_PENDING"), order
     print(f"\n{scenario}: order_id={order['id']} saga_id={order['saga_id']}", flush=True)
     print(f"HTTP 202: status={order['status']} saga_state={order['saga_state']}", flush=True)
     result = verify(order, scenario)
     for step in result["history"]:
-        print(f"  {step['message_type']} -> {step['state']} -> {step['next_command'] or '(конец)'}")
+        command_type = step["next_command"]
+        next_action = f" -> {command_type} ({EXECUTOR[command_type]})" if command_type else ""
+        print(f"  {step['message_type']} -> {step['state']}{next_action}")
     print("PostgreSQL:", json.dumps(result, ensure_ascii=False), flush=True)
     print(f"SUCCESS {scenario}", flush=True)
     return order, result

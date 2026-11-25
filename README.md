@@ -1,5 +1,33 @@
 # GoDelivery: миграция монолита по Strangler Fig
 
+## Задание семинара · EDA и Orchestrated Saga
+
+В ветке `feat_saga_orchestration_seminar` нужно реализовать два метода в Order
+Service. Откройте [заготовку Saga](order-service/internal/domain/saga.go) и
+[тесты бизнес-сценариев](order-service/internal/domain/saga_test.go).
+
+1. В `Saga.Start` определите, когда заказ может начать оплату, переведите
+   Saga на первый шаг и верните имя команды.
+2. В `Saga.Apply` обработайте шесть событий Payment и Stock. Метод выбирает
+   состояние Saga, статус заказа и следующую команду. В терминальном состоянии
+   следующая команда пуста. При недопустимом переходе сохраните данные
+   и верните ошибку, совместимую с `errors.Is(err, ErrTransition)`.
+3. Проверьте компенсацию. После отказа склада заказ ожидает результата
+   возврата. При отказе возврата деньги остаются списанными, причина доступна
+   для разбора. При повторной доставке история и число бизнес-операций сохраняются.
+
+```bash
+go build ./...
+make saga-acceptance
+```
+
+На старте сборка проходит, а тесты Order показывают `TODO Saga.Start`
+и `TODO Saga.Apply`. Payment, Stock, транспорт, SQL-репозитории и обработка
+повторов уже подключены. Переходы реализуйте в домене Order. После модульных
+тестов запустите `make saga-demo-compensation`, затем `make saga-e2e`.
+Критерии приёмки, последовательности сообщений и ход занятия приведены
+в [методичке](SEMINAR_GUIDE.md).
+
 ## Быстрый запуск всех контейнеров приложения
 
 Для полного запуска **Saga, Outbox и DLQ** нужны Docker Engine/Desktop с
@@ -43,7 +71,9 @@ docker compose -f compose.saga.yaml ps -a
 
 Семь основных контейнеров должны иметь статус `healthy`, Jaeger — `running`.
 Однократный `kafka-init` завершается с кодом `0` после создания топиков — это
-ожидаемый результат. В React нажмите «Оформить заказ»: заказ должен перейти
+ожидаемый результат. До выполнения задания создание заказа возвращает HTTP 503
+с текстом `TODO Saga.Start`. После реализации переходов в React нажмите
+«Оформить заказ». Заказ должен перейти
 в `CONFIRMED`, а Saga — в `COMPLETED`.
 Ссылка «Посмотреть трассу в Jaeger» открывает трассу этой покупки. Экспорт
 выполняется асинхронно: при необходимости обновите страницу Jaeger через несколько секунд.
@@ -77,7 +107,7 @@ docker compose -f compose.saga.yaml up -d --build --wait --wait-timeout 240
 портов и логи: `docker compose -f compose.saga.yaml logs --tail=100`.
 Подробности сценариев и диагностики — в [SEMINAR_GUIDE.md](SEMINAR_GUIDE.md).
 
-## Как работает Saga в GoDelivery
+## Требуемое поведение Saga в GoDelivery
 
 **Saga** — это распределённый бизнес-процесс из нескольких локальных транзакций.
 Каждый сервис фиксирует изменения в своей БД: Order хранит заказ и состояние Saga,
@@ -105,7 +135,7 @@ Payment и Stock выполняют локальные операции и пу�
 
 ### Сценарий занятия: оплата прошла, но товара нет
 
-После запуска контейнеров выполните `make saga-demo-compensation`
+После реализации переходов выполните `make saga-demo-compensation`
 (или `python3 scripts/saga_demo.py compensation`). Скрипт заказывает одну единицу
 товара `product_id=2`, у которого демонстрационный остаток равен нулю.
 
@@ -118,7 +148,7 @@ Payment и Stock выполняют локальные операции и пу�
 
 Скрипт проверяет в PostgreSQL историю переходов, отмену заказа, отказ резервирования
 и ровно одно списание и один возврат. Ожидаемый результат — `SUCCESS compensation`.
-Переходы явно описаны в [машине состояний Saga](order-service/internal/domain/saga.go).
+Эти переходы нужно реализовать в [машине состояний Saga](order-service/internal/domain/saga.go).
 
 Возврат — новая локальная транзакция Payment: исходная оплата уже зафиксирована,
 поэтому это не SQL rollback. Возврат тоже может завершиться ошибкой: при событии
@@ -146,8 +176,8 @@ Payment и Stock выполняют локальные операции и пу�
 [SEMINAR_GUIDE.md](SEMINAR_GUIDE.md). Полностью контейнерный стенд с PostgreSQL,
 Kafka и теми же Order/Payment/Stock запускается `make saga-up` без `.env`.
 Центральная демонстрация «оплата → отказ склада → возврат → отмена»:
-`make saga-demo-compensation`. Все E2E: `make saga-e2e`; ZIP рабочего проекта:
-`make saga-zip`. Kafka/API контракты: [docs/SAGA_CONTRACTS.md](docs/SAGA_CONTRACTS.md).
+`make saga-demo-compensation`. Все E2E запускаются командой `make saga-e2e`.
+Контракты HTTP и Kafka приведены в [docs/SAGA_CONTRACTS.md](docs/SAGA_CONTRACTS.md).
 Outbox и DLQ: [docs/RELIABILITY.md](docs/RELIABILITY.md),
 `make saga-demo-outbox`, `make saga-demo-dlq`. Регрессия четырёх этапов Strangler:
 `make regression-strangler` (временно останавливает Saga и затем восстанавливает её).

@@ -5,10 +5,15 @@ ACID-транзакции. Студенты уже знакомы с Event Storm
 Основной пример: **оплата прошла → Stock отказал → Saga инициировала возврат
 → деньги возвращены → заказ отменён**.
 
+В ветке находится задание для совместной работы. Студенты дописывают методы
+`Saga.Start` и `Saga.Apply` в `order-service/internal/domain/saga.go`. Таблица
+состояний и диаграммы ниже задают требования. Раздел Live Demo содержит сценарии
+приёмки. Их ожидаемые финальные состояния относятся к выполненному заданию.
+
 ## Подготовка преподавателя
 
 Требуются Docker Desktop/Engine с Compose v2, Python 3.9+, `make`, браузер.
-Go 1.23+ нужен для локальных тестов, но все процессы запускаются в Docker.
+Для разработки и модульных тестов установите Go 1.23+. Сервисы запускаются в Docker.
 Первый запуск загружает образы и зависимости; выполните его до занятия.
 Предусмотрите около 4 ГБ памяти Docker. Никаких настоящих платежей нет.
 
@@ -17,13 +22,18 @@ Go 1.23+ нужен для локальных тестов, но все проц
 docker compose down
 # Также остановить локальные Order/Payment/Stock от прошлого семинара.
 make saga-up
-make saga-e2e
+make saga-acceptance
 ```
+
+На исходной заготовке контейнеры готовы, а тесты Order падают на двух TODO.
+Выполните `make saga-demo-happy` и покажите студентам `FAILURE`, HTTP 503
+и `TODO Saga.Start`. Локальная транзакция создания заказа откатилась. После
+выполнения задания тот же сценарий должен завершиться `SUCCESS happy`.
 
 `.env` для Saga не нужен; Compose содержит безопасные демонстрационные значения.
 `compose.saga.yaml` — самостоятельная конфигурация, её не нужно объединять
 через `-f docker-compose.yaml -f compose.saga.yaml`. Старый Compose сохранён.
-Все дальнейшие команды выполняются из корня проекта/распакованного архива.
+Все дальнейшие команды выполняются из корня ветки `feat_saga_orchestration_seminar`.
 
 Адреса: React `http://localhost:5173`, Gateway `:8080`, Stock `:8082`, Order
 `:8083`, Payment `:8084`, PostgreSQL `localhost:15432`, Kafka `localhost:19092`.
@@ -67,7 +77,7 @@ Order резервировал Stock синхронным HTTP-вызовом, �
 сохранён. Создавать четвёртый сервис-оркестратор не требуется: процесс является
 частью оформления заказа. Gateway/API/React переиспользованы. Набор проверок:
 машина состояний, прежние тесты, реальные Kafka/SQL сценарии A–D и отказ возврата,
-перезапуск участников, распаковка единого ZIP, чистый Compose-запуск.
+перезапуск участников, проверка учебной заготовки и чистый Compose-запуск.
 
 Используется один PostgreSQL контейнер с тремя **разными базами и пользователями**.
 Это экономит ресурсы ноутбука. Роли не могут подключаться к чужим БД.
@@ -155,14 +165,14 @@ Saga и её историю. Payment сохраняет результат оп�
 
 ## Часть 3. Orchestrated Saga — 15 минут
 
-**35–40 минут.** Откройте `order-service/internal/usecase/saga.go`:
+**35–40 минут.** Реализуйте со студентами первый переход в `Saga.Start`. Проследите, как команда этого метода попадает в Outbox. Откройте `order-service/internal/usecase/saga.go`:
 `Orchestrator.Create`, `Orchestrator.Handle`; затем
 `order-service/internal/domain/saga.go`: `Saga.Start`, `Saga.Apply`.
 Usecase управляет локальной транзакцией и записью Outbox; relay публикует сообщения. Домен определяет
 переход и следующую команду; Kafka handler только декодирует DTO и делегирует.
 Оркестратор знает последовательность, участники знают только свои операции.
 
-**40–45 минут.** Разберите таблицу. Статус заказа остаётся `PENDING`, пока
+**40–45 минут.** Добавьте в `Saga.Apply` переходы успешной оплаты и резерва. Проверьте тестом `go test ./order-service/internal/domain -run TestSagaBusinessOutcomes/happy`. Остальные строки таблицы понадобятся для сценариев отказа. Статус заказа остаётся `PENDING`, пока
 не получено финальное подтверждение.
 
 | Текущее состояние | Факт / действие | Следующее состояние | Следующая команда / заказ |
@@ -203,6 +213,11 @@ stateDiagram-v2
 нет регистрации шагов, рефлексии, Temporal/Camunda или DSL.
 
 ## Часть 4. Live Demo — 30 минут
+
+Для каждого следующего сценария сначала прочитайте его тест и добавьте в
+`Saga.Apply` соответствующий переход. Команды demo пересобирают контейнер Order
+из текущего кода. Для сценария D используйте уже подготовленную обработку
+повторов в `Orchestrator.Handle` и посмотрите, какие записи реально изменились.
 
 ### 50–56 минут. A — успешная Saga
 
@@ -272,10 +287,11 @@ make saga-demo-compensation
 Скрипт выводит точные order_id/saga_id, а затем проверенную последовательность:
 
 ```text
-SagaStarted           -> PAYMENT_PENDING -> ChargePayment
-PaymentCharged        -> STOCK_PENDING   -> ReserveStock
-StockReservationFailed-> COMPENSATING    -> RefundPayment
-PaymentRefunded       -> CANCELLED      -> (конец)
+OrderCreated -> PENDING
+SagaStarted -> PAYMENT_PENDING -> ChargePayment (Payment)
+PaymentCharged -> STOCK_PENDING -> ReserveStock (Stock)
+StockReservationFailed -> COMPENSATING -> RefundPayment (Payment)
+PaymentRefunded -> CANCELLED
 SUCCESS compensation
 ```
 
@@ -407,7 +423,7 @@ handler повторяются до трёх записанных попыток
 успешный заказ. Подробный разбор: [docs/RELIABILITY.md](docs/RELIABILITY.md).
 Их можно использовать после основного занятия или в рамках обсуждения.
 
-## Проверки, повторение и учебные архивы
+## Проверки и самостоятельная работа
 
 ```bash
 go test ./...
@@ -418,7 +434,6 @@ make saga-acceptance
 make saga-integration
 make saga-e2e
 make regression-strangler
-make saga-zip
 ```
 
 `scripts/saga_demo.py` — полноценная интеграционная/E2E проверка с настоящими
@@ -429,11 +444,15 @@ Kafka и PostgreSQL. `saga_test.go` в доменах проверяют исх�
 дубли оплаты. Также проверяется атомарность rollback бизнес-данных и Outbox,
 доставка relay и устойчивый DLQ. Используются изолированные SQL-схемы и fake producer.
 
-`dist/godelivery-saga.zip` — один полностью реализованный рабочий проект.
-Архив не содержит `.git`, `.env`, секретов, бинарников, `node_modules` и
-временных файлов. Сборщик использует список исходных каталогов и постоянные
-timestamp/права; повторная упаковка неизменённых файлов даёт тот же SHA-256.
-Упаковка работает и из распакованного проекта без Git.
+### Критерии сдачи
+
+- Оба метода в `order-service/internal/domain/saga.go` реализованы. При
+  недопустимом событии состояние и причина остаются прежними.
+- `make saga-acceptance` проходит. Для отказа склада покажите в истории
+  состояние `COMPENSATING`, выданную команду и факт, разрешивший отмену заказа.
+- После `make saga-up` проходят `make saga-integration` и `make saga-e2e`.
+  Объясните, почему при повторе вырос счётчик доставок, а число списаний,
+  возвратов и переходов осталось прежним.
 
 Повторные сценарии используют новые ID и не требуют очистки. Обычная остановка
 `make saga-down` сохраняет данные. **Полный сброс удаляет учебные данные
@@ -445,10 +464,18 @@ make saga-up
 make saga-e2e
 ```
 
-Для проверки архива с чистого состояния остановите исходную копию, распакуйте
-ZIP во временную папку, выполните там `make saga-reset`, `make saga-up`,
-`make saga-e2e`. Имя Compose-проекта фиксировано, поэтому две копии одновременно
-не запускают. Для возврата к Strangler: `make saga-down`, затем прежний README.
+Для чистого прогона остановите работающий стенд командой `make saga-down`.
+Из корня ветки выполните следующие команды. Уникальное
+имя проекта даёт новые тома Kafka и PostgreSQL. Порты стенда должны быть свободны.
+
+```bash
+export COMPOSE_PROJECT_NAME="godelivery-check-$(date +%s)"
+make saga-up
+make saga-integration
+make saga-e2e
+make saga-down
+unset COMPOSE_PROJECT_NAME
+```
 
 Если запуск не удался: `docker compose -f compose.saga.yaml ps -a`, затем
 `docker compose -f compose.saga.yaml logs --tail=100 postgres kafka order-service

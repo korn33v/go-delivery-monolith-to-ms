@@ -47,6 +47,22 @@ func TestSagaCommandsAndCompensationPreconditions(t *testing.T) {
 	if s.Order.Status != "PENDING" {
 		t.Fatal("must await confirmed refund")
 	}
+	for _, tc := range []struct {
+		event, reason, wantReason, wantStatus string
+		wantState                             SagaState
+	}{
+		{"PaymentRefunded", "", "insufficient_stock", "CANCELLED", Cancelled},
+		{"PaymentRefundFailed", "demo_refund_declined", "demo_refund_declined", "PENDING", CompensationFailed},
+	} {
+		t.Run(tc.event, func(t *testing.T) {
+			waiting := s
+			next, err := waiting.Apply(tc.event, tc.reason)
+			if err != nil || next != "" || waiting.State != tc.wantState ||
+				waiting.Order.Status != tc.wantStatus || waiting.Reason != tc.wantReason {
+				t.Fatalf("after %s: %+v next=%q err=%v", tc.event, waiting, next, err)
+			}
+		})
+	}
 }
 
 func TestSagaRejectsInvalidAndDuplicateTransitions(t *testing.T) {
