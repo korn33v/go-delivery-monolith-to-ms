@@ -7,10 +7,10 @@ import (
 	"testing"
 )
 
-func TestSagaStartsPayment(t *testing.T) {
+func TestSagaStartsStock(t *testing.T) {
 	s := Saga{State: Pending, Order: Order{Status: "PENDING"}}
 	next, err := s.Start()
-	if err != nil || next != "ChargePayment" || s.State != PaymentPending || s.Order.Status != "PENDING" {
+	if err != nil || next != "ReserveStock" || s.State != StockPending || s.Order.Status != "PENDING" {
 		t.Fatalf("start: saga=%+v command=%q err=%v", s, next, err)
 	}
 }
@@ -19,8 +19,8 @@ func TestSagaBusinessOutcomes(t *testing.T) {
 	type event struct {
 		kind, reason, nextCommand string
 	}
-	charged := event{kind: "PaymentCharged", nextCommand: "ReserveStock"}
-	outOfStock := event{"StockReservationFailed", "insufficient_stock", "RefundPayment"}
+	reserved := event{kind: "StockReserved", nextCommand: "ChargePayment"}
+	outOfStock := event{kind: "StockReservationFailed", reason: "insufficient_stock"}
 	tests := []struct {
 		name   string
 		events []event
@@ -28,16 +28,15 @@ func TestSagaBusinessOutcomes(t *testing.T) {
 		status string
 		reason string
 	}{
-		{"happy", []event{charged, {kind: "StockReserved"}}, Completed, "CONFIRMED", ""},
-		{"payment declined", []event{{kind: "PaymentFailed", reason: "demo_payment_declined"}}, Cancelled, "CANCELLED", "demo_payment_declined"},
-		{"compensated", []event{charged, outOfStock, {kind: "PaymentRefunded"}}, Cancelled, "CANCELLED", "insufficient_stock"},
-		{"refund failed", []event{charged, outOfStock, {kind: "PaymentRefundFailed", reason: "demo_refund_declined"}}, CompensationFailed, "PENDING", "demo_refund_declined"},
+		{"happy", []event{reserved, {kind: "PaymentCharged"}}, Completed, "CONFIRMED", ""},
+		{"out of stock", []event{outOfStock}, Cancelled, "CANCELLED", "insufficient_stock"},
+		{"payment declined", []event{reserved, {kind: "PaymentFailed", reason: "demo_payment_declined", nextCommand: "ReleaseStock"}, {kind: "StockReleased"}}, Cancelled, "CANCELLED", "demo_payment_declined"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := Saga{State: Pending, Order: Order{Status: "PENDING"}}
 			command, err := s.Start()
-			if err != nil || command != "ChargePayment" {
+			if err != nil || command != "ReserveStock" {
 				t.Fatalf("start: %q %v", command, err)
 			}
 			for _, e := range tt.events {
@@ -54,22 +53,22 @@ func TestSagaBusinessOutcomes(t *testing.T) {
 }
 
 func TestSagaCommandsAndCompensationPreconditions(t *testing.T) {
-	s := Saga{State: PaymentPending, Order: Order{Status: "PENDING"}}
-	if next, err := s.Apply("PaymentCharged", ""); err != nil || next != "ReserveStock" || s.State != StockPending || s.Order.Status != "PENDING" {
-		t.Fatalf("reserve: %+v %q %v", s, next, err)
+	s := Saga{State: StockPending, Order: Order{Status: "PENDING"}}
+	if next, err := s.Apply("StockReserved", ""); err != nil || next != "ChargePayment" || s.State != PaymentPending || s.Order.Status != "PENDING" {
+		t.Fatalf("payment: %+v %q %v", s, next, err)
 	}
-	if next, err := s.Apply("StockReservationFailed", "insufficient_stock"); err != nil || next != "RefundPayment" || s.State != Compensating {
-		t.Fatalf("refund: %+v %q %v", s, next, err)
+	if next, err := s.Apply("PaymentFailed", "demo_payment_declined"); err != nil || next != "ReleaseStock" || s.State != Compensating {
+		t.Fatalf("release: %+v %q %v", s, next, err)
 	}
-	if s.Order.Status != "PENDING" || s.Reason != "insufficient_stock" {
-		t.Fatalf("awaiting refund: %+v", s)
+	if s.Order.Status != "PENDING" || s.Reason != "demo_payment_declined" {
+		t.Fatalf("awaiting release: %+v", s)
 	}
 }
 
 func TestSagaRejectsInvalidAndDuplicateTransitions(t *testing.T) {
 	states := []SagaState{Pending, PaymentPending, StockPending, Compensating, Completed, Cancelled, CompensationFailed}
-	events := []string{"PaymentCharged", "PaymentFailed", "StockReserved", "StockReservationFailed", "PaymentRefunded", "PaymentRefundFailed", "Unknown"}
-	allowed := map[SagaState]map[string]bool{PaymentPending: {"PaymentCharged": true, "PaymentFailed": true}, StockPending: {"StockReserved": true, "StockReservationFailed": true}, Compensating: {"PaymentRefunded": true, "PaymentRefundFailed": true}}
+	events := []string{"PaymentCharged", "PaymentFailed", "StockReserved", "StockReservationFailed", "StockReleased", "PaymentRefunded", "PaymentRefundFailed", "Unknown"}
+	allowed := map[SagaState]map[string]bool{PaymentPending: {"PaymentCharged": true, "PaymentFailed": true}, StockPending: {"StockReserved": true, "StockReservationFailed": true}, Compensating: {"StockReleased": true}}
 	for _, state := range states {
 		for _, event := range events {
 			if allowed[state][event] {

@@ -26,9 +26,8 @@ func (s *SagaService) Handle(ctx context.Context, m sagacontract.Message) error 
 	if err := m.Validate(); err != nil {
 		return messageerror.Permanent(err)
 	}
-	if m.Type != sagacontract.ReserveStock {
-		// TODO для студентов: обработать ReleaseStock отдельной операцией.
-		return messageerror.Permanent(errors.New("stock expects ReserveStock"))
+	if m.Type != sagacontract.ReserveStock && m.Type != sagacontract.ReleaseStock {
+		return messageerror.Permanent(errors.New("stock expects ReserveStock or ReleaseStock"))
 	}
 	tx, err := s.Store.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -42,16 +41,20 @@ func (s *SagaService) Handle(ctx context.Context, m sagacontract.Message) error 
 		}
 		return err
 	}
-	event, duplicate, err := s.Store.Result(ctx, tx, m)
+	var event sagacontract.Message
+	var duplicate bool
+	if m.Type == sagacontract.ReleaseStock {
+		event, duplicate, err = s.Store.Release(ctx, tx, p, m)
+	} else {
+		event, duplicate, err = s.Store.Result(ctx, tx, m)
+		if err == nil && !duplicate {
+			kind, reason := domain.ReserveAvailable(&p, m.Data.Quantity)
+			event = sagacontract.Reply(m, kind, reason)
+			err = s.Store.Save(ctx, tx, p, m, event)
+		}
+	}
 	if err != nil {
 		return err
-	}
-	if !duplicate {
-		kind, reason := domain.ReserveAvailable(&p, m.Data.Quantity)
-		event = sagacontract.Reply(m, kind, reason)
-		if err = s.Store.Save(ctx, tx, p, m, event); err != nil {
-			return err
-		}
 	}
 	if err = s.Outbox.Enqueue(ctx, tx, event); err != nil {
 		return err
