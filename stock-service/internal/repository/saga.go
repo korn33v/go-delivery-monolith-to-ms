@@ -71,6 +71,46 @@ func (r *SagaStore) Save(ctx context.Context, tx *sql.Tx, p domain.Product, m, e
 	return err
 }
 
+func (r *SagaStore) Release(ctx context.Context, tx *sql.Tx, p domain.Product, m sagacontract.Message) (sagacontract.Message, bool, error) {
+	var request, response []byte
+	var status string
+	err := tx.QueryRowContext(ctx, `SELECT request,release_response,status FROM stock_receipts WHERE order_id=$1`, m.OrderID).Scan(&request, &response, &status)
+	if errors.Is(err, sql.ErrNoRows) {
+		return sagacontract.Message{}, false, messageerror.Permanent(errors.New("stock reservation not found"))
+	}
+	if err != nil {
+		return sagacontract.Message{}, false, err
+	}
+	var original sagacontract.Message
+	if err := json.Unmarshal(request, &original); err != nil {
+		return sagacontract.Message{}, false, err
+	}
+	if original.Type != sagacontract.ReserveStock || original.SagaID != m.SagaID || original.Data != m.Data || original.Data.ProductID != p.ID {
+		return sagacontract.Message{}, false, messageerror.Permanent(errors.New("stock reservation does not match release"))
+	}
+	if status == "RELEASED" {
+		var event sagacontract.Message
+		if err := json.Unmarshal(response, &event); err != nil {
+			return event, false, err
+		}
+		_, err := tx.ExecContext(ctx, `UPDATE stock_receipts SET deliveries=deliveries+1 WHERE order_id=$1`, m.OrderID)
+		return event, true, err
+	}
+	if status != "RESERVED" {
+		return sagacontract.Message{}, false, messageerror.Permanent(errors.New("stock reservation is not active"))
+	}
+	event := sagacontract.Reply(m, sagacontract.StockReleased, "")
+	encoded, err := json.Marshal(event)
+	if err != nil {
+		return event, false, err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE products SET available=available+$2 WHERE id=$1`, p.ID, m.Data.Quantity); err != nil {
+		return event, false, err
+	}
+	_, err = tx.ExecContext(ctx, `UPDATE stock_receipts SET status='RELEASED',release_response=$2 WHERE order_id=$1`, m.OrderID, string(encoded))
+	return event, false, err
+}
+
 // Keep the existing Stock HTTP API usable in Saga mode too.
 func (r *SagaStore) Get(id int) (domain.Product, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)

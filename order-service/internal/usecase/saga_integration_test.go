@@ -51,58 +51,58 @@ func TestSagaStateAndOutgoingDecisionCommitAtomically(t *testing.T) {
 		t.Fatal(err)
 	}
 	var count int
-	if err = db.QueryRow(`SELECT count(*) FROM outbox_messages WHERE id=$1`, saga.ID+":ChargePayment").Scan(&count); err != nil || count != 1 {
+	if err = db.QueryRow(`SELECT count(*) FROM outbox_messages WHERE id=$1`, saga.ID+":ReserveStock").Scan(&count); err != nil || count != 1 {
 		t.Fatalf("initial intent missing: %d %v", count, err)
 	}
-	invalid := sagacontract.New(saga.ID, saga.Order.ID, sagacontract.StockReserved, sagaData(saga))
+	invalid := sagacontract.New(saga.ID, saga.Order.ID, sagacontract.PaymentCharged, sagaData(saga))
 	if err = service.Handle(ctx, invalid); !errors.Is(err, domain.ErrTransition) || !messageerror.IsPermanent(err) {
 		t.Fatalf("invalid transition not rejected permanently: %v", err)
 	}
-	charged := sagacontract.New(saga.ID, saga.Order.ID, sagacontract.PaymentCharged, sagaData(saga))
-	reservationOutbox := &unavailableOutbox{}
-	service.Outbox = reservationOutbox
-	if err = service.Handle(ctx, charged); !errors.Is(err, errOutboxWrite) || reservationOutbox.calls != 1 {
-		t.Fatalf("PaymentCharged: want one Enqueue and its write error; calls=%d err=%v", reservationOutbox.calls, err)
+	reserved := sagacontract.New(saga.ID, saga.Order.ID, sagacontract.StockReserved, sagaData(saga))
+	paymentOutbox := &unavailableOutbox{}
+	service.Outbox = paymentOutbox
+	if err = service.Handle(ctx, reserved); !errors.Is(err, errOutboxWrite) || paymentOutbox.calls != 1 {
+		t.Fatalf("StockReserved: want one Enqueue and its write error; calls=%d err=%v", paymentOutbox.calls, err)
 	}
 	saved, err := store.Get(ctx, saga.Order.ID)
-	if err != nil || saved.State != domain.PaymentPending {
+	if err != nil || saved.State != domain.StockPending {
 		t.Fatalf("after enqueue failure: state=%s err=%v", saved.State, err)
 	}
 	// A new application instance reads only durable data.
 	service = NewOrchestrator(&repository.SagaStore{DB: db}, &outbox.Store{DB: db}, true)
-	if err = service.Handle(ctx, charged); err != nil {
+	if err = service.Handle(ctx, reserved); err != nil {
 		t.Fatal(err)
 	}
-	charged.EventID += ":new-id"
-	if err = service.Handle(ctx, charged); err != nil {
+	reserved.EventID += ":new-id"
+	if err = service.Handle(ctx, reserved); err != nil {
 		t.Fatal(err)
 	}
 	if err = db.QueryRow(`SELECT count(*) FROM saga_history WHERE saga_id=$1`, saga.ID).Scan(&count); err != nil || count != 3 {
 		t.Fatalf("duplicate transition: %d %v", count, err)
 	}
-	if err = db.QueryRow(`SELECT count(*) FROM outbox_messages WHERE id=$1`, saga.ID+":ReserveStock").Scan(&count); err != nil || count != 1 {
+	if err = db.QueryRow(`SELECT count(*) FROM outbox_messages WHERE id=$1`, saga.ID+":ChargePayment").Scan(&count); err != nil || count != 1 {
 		t.Fatalf("duplicate command intent: %d %v", count, err)
 	}
-	wrong := charged
+	wrong := reserved
 	wrong.Data.AmountCents++
 	if err = service.Handle(ctx, wrong); !messageerror.IsPermanent(err) {
 		t.Fatal("accepted conflicting operation", err)
 	}
-	failedStock := sagacontract.New(saga.ID, saga.Order.ID, sagacontract.StockReservationFailed, sagaData(saga))
-	failedStock.Data.Reason = "insufficient_stock"
-	if err = service.Handle(ctx, failedStock); err != nil {
+	failedPayment := sagacontract.New(saga.ID, saga.Order.ID, sagacontract.PaymentFailed, sagaData(saga))
+	failedPayment.Data.Reason = "demo_payment_declined"
+	if err = service.Handle(ctx, failedPayment); err != nil {
 		t.Fatal(err)
 	}
 	saved, _ = store.Get(ctx, saga.Order.ID)
 	if saved.State != domain.Compensating || saved.Order.Status != "PENDING" {
-		t.Fatal("cancelled before refund", saved)
+		t.Fatal("cancelled before release", saved)
 	}
-	if err = db.QueryRow(`SELECT count(*) FROM outbox_messages WHERE id=$1`, saga.ID+":RefundPayment").Scan(&count); err != nil || count != 1 {
+	if err = db.QueryRow(`SELECT count(*) FROM outbox_messages WHERE id=$1`, saga.ID+":ReleaseStock").Scan(&count); err != nil || count != 1 {
 		t.Fatalf("compensation not queued: %d %v", count, err)
 	}
-	refunded := sagacontract.New(saga.ID, saga.Order.ID, sagacontract.PaymentRefunded, sagaData(saga))
+	released := sagacontract.New(saga.ID, saga.Order.ID, sagacontract.StockReleased, sagaData(saga))
 	for i := 0; i < 2; i++ {
-		if err = service.Handle(ctx, refunded); err != nil {
+		if err = service.Handle(ctx, released); err != nil {
 			t.Fatal(err)
 		}
 	}
