@@ -1,191 +1,78 @@
-# GoDelivery · Практикум по Orchestrated Saga
+# GoDelivery · Эталонное решение Orchestrated Saga
 
-**60 минут** · Ветка `feat_saga_orchestration_seminar`
+Ветка `feat_saga_orchestration_sol` реализует User Story семинара. GoDelivery
+резервирует товар до оплаты. При отказе оплаты Stock освобождает резерв,
+а Order отменяет заказ после подтверждения снятия. Задание для самостоятельной
+работы находится в ветке `feat_saga_orchestration_seminar`.
 
-Стартовая версия оформляет заказы по схеме «оплата → резервирование». Задача
-практикума — изменить работающую Saga так, чтобы склад резервировал товар до
-оплаты и снимал резерв при отказе оплаты.
+## Запуск и проверка
 
-[Запуск](#запуск-окружения) · [User Story](#user-story) ·
-[Критерии приёмки](#критерии-приёмки) · [План работы](#план-работы) ·
-[Проверка PostgreSQL](#sql-для-одного-заказа)
-
-## Запуск окружения
-
-Понадобятся Go 1.23+, Docker Engine или Desktop с Compose v2, Python 3.9+ и Make.
-Запустите Docker и выделите ему около 4 ГБ памяти. Для первой сборки потребуется
-загрузить образы и зависимости. Выполните её до начала практикума. Если работает
-стенд Strangler Fig, остановите его контейнеры и локальные сервисы, чтобы
-освободить порты.
-
-Запустите стенд из корня репозитория.
+Понадобятся Docker с Compose v2, Go 1.23+, Python 3.9+ и Make. Выделите Docker
+около 4 ГБ памяти. При первом запуске понадобятся доступ к реестру образов и
+свободные порты. Остановите работающий стенд предыдущего семинара перед запуском.
 
 ```bash
-git switch feat_saga_orchestration_seminar
+git switch feat_saga_orchestration_sol
 make saga-up
-docker compose -f compose.saga.yaml ps -a
-```
-
-`make saga-up` собирает сервисы и ждёт готовности контейнеров. Compose создаст
-топики Kafka, базы PostgreSQL и тестовые товары. Настройки для запуска уже
-заданы в [compose.saga.yaml](compose.saga.yaml). Локальный `.env` не требуется.
-Контейнер `kafka-init` должен завершиться с кодом `0`.
-
-| Компонент | Адрес |
-|---|---|
-| Интерфейс покупателя | [http://localhost:5173](http://localhost:5173) |
-| API Gateway и Swagger | [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html) |
-| Jaeger | [http://localhost:16686](http://localhost:16686) |
-| PostgreSQL · базы `orders`, `payments` и `stock` | `localhost:15432` |
-| Kafka | `localhost:19092` |
-
-Если запуск прервался, проверьте состояние Docker, свободные порты и логи.
-После работы остановите стенд через `make saga-down`. Данные сохранятся в томах
-Docker. Команда `make saga-reset` удаляет данные Kafka и PostgreSQL этого стенда.
-
-```bash
-docker compose -f compose.saga.yaml logs --tail=100
-```
-
-## User Story
-
-### Бизнес-постановка
-
-Сейчас GoDelivery списывает деньги до резервирования. Если склад затем сообщает,
-что товара недостаточно, система возвращает деньги и отменяет заказ после
-подтверждения возврата. Покупатель видит списание за товар, который магазин
-не может доставить.
-
-> **Как покупатель GoDelivery, я хочу, чтобы нужное количество товара
-> резервировалось до оплаты, чтобы деньги списывались только за товар, который
-> магазин может мне выделить.**
-
-Заказ в этой версии содержит один товар и его количество. При достаточном
-остатке GoDelivery резервирует товар, проводит оплату и подтверждает заказ.
-При нехватке товара GoDelivery отменяет заказ без оплаты. При отказе оплаты
-после успешного резервирования Stock снимает резерв, а Order ждёт подтверждения
-снятия перед окончательной отменой.
-
-## Критерии приёмки
-
-| Критерий | Дано | Когда | Тогда |
-|---|---|---|---|
-| **AC-01 · Успешный заказ** | Товара достаточно, оплата проходит | Покупатель оформляет заказ | Stock уменьшает доступный остаток на заказанное количество. Только после `StockReserved` Order отправляет команду оплаты. После успешной оплаты заказ получает `CONFIRMED`. Резерв сохраняется, компенсация не запускается. |
-| **AC-02 · Товара недостаточно** | Доступный остаток меньше запрошенного | Склад отклоняет резервирование | Заказ получает `CANCELLED`. Остаток сохраняется, команда оплаты не отправляется, списания и возврата нет. |
-| **AC-03 · Оплата отклонена** | Резерв уже создан | Payment отклоняет оплату | Order отправляет `ReleaseStock`. Stock снимает резерв и восстанавливает доступный остаток. Списания и возврата нет. После подтверждения снятия заказ получает `CANCELLED`. |
-| **AC-04 · Снятие ещё выполняется** | Оплата отклонена, Order запросил снятие | Подтверждение `StockReleased` ещё не получено | Заказ остаётся `PENDING`, Saga — `COMPENSATING`. Отмена завершается только после `StockReleased`. |
-
-## План работы
-
-### 0–10 минут · Воспроизведите исходный процесс и RED
-
-```bash
-go build ./...
 make saga-acceptance
-python3 scripts/saga_demo.py happy --no-start
-```
-
-Ожидаются успешная сборка, проходящие тесты исходной Saga и `SUCCESS happy`.
-В истории `ChargePayment` стоит перед `ReserveStock`. Чтобы увидеть исходный
-возврат денег при отсутствии товара, выполните
-`python3 scripts/saga_demo.py compensation --no-start`.
-
-На том же стенде запустите проверки нового требования.
-
-```bash
-make saga-assignment
 make saga-assignment-stock
-```
-
-Обе команды должны показать RED. В Order первая команда пока `ChargePayment`,
-при отказе склада запускается `RefundPayment`, а при отказе оплаты заказ
-отменяется сразу. В Stock тест успешно создаёт резерв и получает
-`stock expects ReserveStock` при попытке выполнить `ReleaseStock`.
-
-### 10–25 минут · Изучите код и измените порядок шагов
-
-| Где читать | Что найти |
-|---|---|
-| [Машина состояний Order](order-service/internal/domain/saga.go) | `Saga.Start` выбирает первую команду, `Saga.Apply` определяет переход после события. |
-| [Оркестратор Order](order-service/internal/usecase/saga.go) и [репозиторий](order-service/internal/repository/saga.go) | `Create` и `Handle` сохраняют шаг Saga и команду в локальной транзакции. Повторное событие распознаётся до вызова `Apply`. |
-| [Обработчик Stock](stock-service/internal/usecase/saga.go), [правило резерва](stock-service/internal/domain/saga.go) и [репозиторий](stock-service/internal/repository/saga.go) | Как блокируется товар, уменьшается остаток, сохраняется результат и ставится событие в Outbox. |
-| [Payment](payment-service/internal/usecase/saga.go) и [правила оплаты и возврата](payment-service/internal/domain/saga.go) | Как бизнес-отказ превращается в событие. Возврат денег — пример отдельной компенсирующей операции. |
-| [Контракт Kafka](internal/sagacontract/message.go) | Куда маршрутизируются команды. Как `order_id` и `saga_id` связывают сообщения с заказом. |
-
-Пройдите по требованиям AC-01 и AC-02. Для каждого события определите, какой
-сервис его публикует, какой шаг ждёт оркестратор и какую команду отправляет дальше.
-Измените существующие переходы в `Start` и `Apply`, переиспользуя `STOCK_PENDING`
-и `PAYMENT_PENDING`. Подтверждайте заказ после успешной оплаты и отменяйте при
-отказе в резервировании без обращения к Payment. Сохраните обработку
-недопустимых переходов.
-
-```bash
-go test -tags=saga_assignment ./order-service/internal/domain \
-  -run 'TestAssignment(ReserveBeforePayment|NoPaymentWhenStockRejects)'
-```
-
-Оба теста должны пройти. Остальные ожидания найдёте в
-[тестах нового бизнес-процесса](order-service/internal/domain/saga_assignment_test.go).
-
-### 25–45 минут · Добавьте снятие резерва
-
-1. В Order обработайте отказ оплаты после резервирования. Переведите Saga в
-   `COMPENSATING`, сохраните причину отказа и отправьте `ReleaseStock`. После
-   `StockReleased` завершите отмену. Команда и событие уже описаны в
-   [контракте](internal/sagacontract/message.go).
-2. В [обработчике Stock](stock-service/internal/usecase/saga.go) добавьте операцию
-   для `ReleaseStock`. Найдите запись резерва по `order_id` и сверьте `saga_id`,
-   товар и количество. Используйте существующую блокировку товара.
-3. В локальной транзакции восстановите остаток по активному резерву, сохраните
-   статус `RELEASED` и поставьте `StockReleased` в Outbox. Для повторной доставки
-   используйте сохранённый результат, чтобы не увеличивать остаток второй раз.
-   [Миграция](stock-service/internal/repository/saga_release.sql) уже добавляет
-   `release_response`. Поля `request` и `response` хранят исходный результат
-   резервирования. Проверку SQL и события задаёт
-   [интеграционный тест Stock](stock-service/internal/usecase/saga_assignment_test.go).
-
-Order координирует шаги, Stock владеет остатками, Payment владеет оплатой. Каждый
-сервис меняет свою БД. Оставьте взаимодействие между участниками в Kafka.
-
-```bash
-make saga-assignment
-make saga-assignment-stock
-```
-
-Ожидается GREEN. Исправляйте реализацию, сохраняя существующие тесты.
-
-### 45–60 минут · Проверьте и сдайте
-
-```bash
 make saga-assignment-e2e
 ```
 
-Команда пересобирает стенд и проводит реальные заказы через Gateway, Kafka и
-PostgreSQL. Должны появиться `SUCCESS assignment happy`,
-`SUCCESS assignment out-of-stock` и `SUCCESS assignment payment-declined`.
-[Код сквозной проверки](scripts/saga_assignment.py)
+[Compose](compose.saga.yaml) собирает сервисы и запускает Kafka и три базы
+PostgreSQL. `.env` не требуется. Контейнер `kafka-init` завершается с кодом `0`.
+Интерфейс доступен на [localhost:5173](http://localhost:5173), Swagger — на
+[localhost:8080](http://localhost:8080/swagger/index.html), Jaeger — на
+[localhost:16686](http://localhost:16686). Для остановки выполните `make saga-down`.
+Команда `make saga-reset` удаляет данные Kafka и PostgreSQL этого стенда.
 
-Также воспроизведите Happy Path вручную. Запишите доступный остаток товара 1
-из `GET /api/v1/stock/1`. Оформите заказ в интерфейсе или выполните
-`POST /api/v1/orders` в Swagger с телом
-`{"product_id": 1, "quantity": 1}`. Сохраните `id` заказа и `saga_id` из ответа
-`202`. Проверьте `GET /api/v1/orders/{id}` в Swagger до получения `CONFIRMED` и
-`COMPLETED`. До завершения асинхронных шагов заказ может оставаться `PENDING`.
-Для ручного отказа оплаты добавьте поле `"demo_failure": "payment"`. Товар 2
-предназначен для проверки отсутствия остатка. В выводе `make saga-logs`
-найдите записи с вашим `saga_id` и проследите команды и события Order, Stock и Payment.
+## Поведение решения
 
-Для сдачи покажите результаты трёх команд `saga-assignment*` и данные одного
-ручного заказа. В истории Happy Path покажите участок `StockReserved →
-ChargePayment → PaymentCharged`. Для отказа оплаты объясните, почему
-`PaymentFailed` запускает снятие резерва, а окончательную отмену разрешает
-`StockReleased`.
+| Критерий | Наблюдаемый результат |
+|---|---|
+| **AC-01 · Успешный заказ** | `ReserveStock → StockReserved → ChargePayment → PaymentCharged`. Остаток уменьшается, заказ получает `CONFIRMED`, резерв сохраняется. |
+| **AC-02 · Товара недостаточно** | `StockReservationFailed` отменяет заказ. Остаток сохраняется, команда оплаты не отправляется. |
+| **AC-03 · Оплата отклонена** | `PaymentFailed` запускает `ReleaseStock`. Stock восстанавливает остаток, списаний и возвратов нет. |
+| **AC-04 · Снятие ещё выполняется** | Заказ остаётся `PENDING`, Saga — `COMPENSATING`. После `StockReleased` заказ получает `CANCELLED`. |
 
-`make saga-acceptance` и `make saga-demo-*` проверяют исходную последовательность.
-Тесты новой последовательности запускаются с Go-тегом `saga_assignment`.
+[Машина состояний Order](order-service/internal/domain/saga.go) выбирает
+следующую команду. [Оркестратор](order-service/internal/usecase/saga.go) сохраняет
+её вместе с переходом в одной локальной транзакции. В
+[Stock](stock-service/internal/usecase/saga.go) восстановление остатка, статус
+`RELEASED`, сохранённый результат и запись события в Outbox составляют одну
+транзакцию. [Репозиторий Stock](stock-service/internal/repository/saga.go)
+проверяет данные резерва и при повторе возвращает сохранённый `StockReleased`.
+Повтор старого `ReserveStock` сохраняет исходный результат резервирования
+и не расходует восстановленный остаток.
 
-Если осталось время, добавьте тест повторной доставки `ReleaseStock`. Проверьте,
-что повтор возвращает тот же результат и не увеличивает остаток.
+[Миграция Order](order-service/internal/repository/saga_payment_order.sql)
+помечает существующие Saga как начатые с оплаты. Они завершаются по своим
+исходным правилам, включая возврат денег после отказа склада. При переходе
+на эталонную ветку остановите старые экземпляры сервисов перед запуском новых.
+Новые заказы используют порядок «склад → оплата».
+
+## Демонстрация и регрессия
+
+```bash
+make saga-demo-happy
+make saga-demo-out-of-stock
+make saga-demo-compensation
+make saga-demo-duplicate
+```
+
+Компенсация использует товар 1 и `demo_failure=payment`. В истории должны
+появиться `PaymentFailed → ReleaseStock → StockReleased`. Для проверки
+вручную откройте Swagger и отправьте `POST /api/v1/orders` с телом
+`{"product_id":1,"quantity":1,"demo_failure":"payment"}`. Проверьте итог через
+`GET /api/v1/orders/{id}` и запросы PostgreSQL ниже. Товар 2 позволяет
+проверить отмену из-за нехватки товара. Проследить события по `saga_id` можно
+командой `make saga-logs`.
+
+`make saga-integration` проверяет транзакции, включая откат при сбое записи
+Outbox и сохранение исходного процесса для заказов до миграции.
+`make saga-e2e` дополнительно проверяет повторную доставку, восстановление
+Outbox, DLQ и Jaeger. Демонстрация отказа возврата денег доступна в исходной
+ветке `feat_saga_orchectration_demo`.
 
 ## SQL для одного заказа
 
@@ -232,9 +119,7 @@ SQL
 `saga_history` каждая строка связывает событие с переходом и следующей командой.
 Это позволяет установить порядок шагов при асинхронной доставке.
 
-Для преподавателя доступны [сценарий занятия на 90 минут](SEMINAR_GUIDE.md),
-[контракты HTTP и Kafka](docs/SAGA_CONTRACTS.md) и
-[сценарии проверки Outbox и DLQ](docs/RELIABILITY.md).
+[Контракты HTTP и Kafka](docs/SAGA_CONTRACTS.md) · [Проверка Outbox и DLQ](docs/RELIABILITY.md)
 
 ## Учебные материалы и исходный стенд Strangler Fig
 

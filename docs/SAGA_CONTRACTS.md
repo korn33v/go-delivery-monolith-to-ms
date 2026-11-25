@@ -23,7 +23,7 @@ Content-Type: application/json
 Ответ `202 Accepted`:
 
 ```json
-{"id":"order-...","product_id":2,"quantity":1,"amount_cents":9999000,"status":"PENDING","owner":"order-service","saga_id":"saga-...","saga_state":"PAYMENT_PENDING"}
+{"id":"order-...","product_id":2,"quantity":1,"amount_cents":9999000,"status":"PENDING","owner":"order-service","saga_id":"saga-...","saga_state":"STOCK_PENDING"}
 ```
 
 `GET /api/v1/orders/{id}`: `200` с тем же DTO и актуальными `status`,
@@ -42,7 +42,9 @@ idempotency key в этой демонстрации не реализован.
 
 Опциональное поле `demo_failure`: `payment` или `refund`. Оно принимается
 только при `SAGA_DEMO_FAILURES=true` (в учебном Compose включено по умолчанию).
-Payment проверяет этот флаг независимо. Чтобы отключить:
+Payment проверяет этот флаг независимо. Значение `refund` влияет на возврат
+в процессе с оплатой первой. В заказах нового процесса возврат не запускается.
+Чтобы отключить демо-отказы:
 `SAGA_DEMO_FAILURES=false docker compose -f compose.saga.yaml up -d`.
 Это не платёжный API и не механизм удалённого управления production-сбоем.
 
@@ -55,15 +57,14 @@ Readiness не доказывает завершение назначения co
 | Топик | Тип | Producer | Consumer group |
 |---|---|---|---|
 | `saga.payment.commands.v1` | `ChargePayment`, `RefundPayment` | Order | `saga-payment-v1` (Payment) |
-| `saga.stock.commands.v1` | `ReserveStock` | Order | `saga-stock-v1` (Stock) |
+| `saga.stock.commands.v1` | `ReserveStock`, `ReleaseStock` | Order | `saga-stock-v1` (Stock) |
 | `saga.events.v1` | `PaymentCharged`, `PaymentFailed`, `PaymentRefunded`, `PaymentRefundFailed` | Payment | `saga-order-v1` (Order) |
-| `saga.events.v1` | `StockReserved`, `StockReservationFailed` | Stock | `saga-order-v1` (Order) |
+| `saga.events.v1` | `StockReserved`, `StockReservationFailed`, `StockReleased` | Stock | `saga-order-v1` (Order) |
 
-Для учебного задания подготовлены `ReleaseStock` в `saga.stock.commands.v1`
-и `StockReleased` в `saga.events.v1`. Они используют те же идентификаторы
-и данные операции, что и резервирование. В стартовом процессе команда
-снятия резерва не отправляется. Реализация операции и переходов по её
-результату входит в [практикум](../STUDENT_TASK.md).
+`ReleaseStock` и `StockReleased` используют те же идентификаторы и данные
+операции, что и резервирование. `StockReleased` подтверждает восстановление
+остатка. `RefundPayment` и события возврата применяются к Saga, которые
+начались по прежней схеме до миграции.
 
 Все топики имеют одну партицию и replication factor 1. Kafka key — `saga_id`.
 Так сообщения одной Saga попадают в одну партицию. Глобального порядка между
@@ -79,13 +80,13 @@ Go DTO: `internal/sagacontract/message.go`.
 
 ```json
 {
-  "event_id":"saga-123:RefundPayment",
+  "event_id":"saga-123:ReleaseStock",
   "saga_id":"saga-123",
   "order_id":"order-456",
-  "message_type":"RefundPayment",
+  "message_type":"ReleaseStock",
   "schema_version":1,
   "created_at":"2026-11-13T10:00:00Z",
-  "data":{"product_id":2,"quantity":1,"amount_cents":9999000}
+  "data":{"product_id":1,"quantity":1,"amount_cents":9999000,"demo_failure":"payment"}
 }
 ```
 
@@ -124,7 +125,8 @@ Order блокирует строку Saga через `FOR UPDATE`, провер
 
 Payment блокирует платёж по `order_id`, хранит результат каждой операции
 `(order_id,message_type)`. Stock блокирует товар и хранит результат резерва
-по `order_id`. Бизнес-эффект и результат фиксируются одной локальной транзакцией.
+по `order_id`. Результат снятия резерва хранится в `release_response`.
+При снятии статус становится `RELEASED`. Бизнес-эффект и результат фиксируются одной локальной транзакцией.
 Повтор использует сохранённое событие, включая прежние ID и timestamp.
 Другие параметры с тем же ключом отклоняются. Счётчик `deliveries` растёт при
 обработке дубля, а `charges`, `refunds`, количество товара и история не меняются.

@@ -15,19 +15,23 @@ import (
 //go:embed saga.sql
 var SagaSchema string
 
+//go:embed saga_payment_order.sql
+var PaymentOrderSchema string
+
 type SagaStore struct{ DB *sql.DB }
 
 func (r *SagaStore) Insert(ctx context.Context, tx *sql.Tx, s domain.Saga) error {
 	if _, err := tx.ExecContext(ctx, `INSERT INTO orders VALUES($1,$2,$3,$4,$5)`, s.Order.ID, s.Order.ProductID, s.Order.Quantity, s.Order.AmountCents, s.Order.Status); err != nil {
 		return err
 	}
-	_, err := tx.ExecContext(ctx, `INSERT INTO sagas VALUES($1,$2,$3,$4,$5)`, s.ID, s.Order.ID, s.State, s.DemoFailure, s.Reason)
+	_, err := tx.ExecContext(ctx, `INSERT INTO sagas(id,order_id,state,demo_failure,reason,payment_first) VALUES($1,$2,$3,$4,$5,$6)`,
+		s.ID, s.Order.ID, s.State, s.DemoFailure, s.Reason, s.PaymentFirst)
 	return err
 }
 
 func scanSaga(row *sql.Row) (domain.Saga, error) {
 	var s domain.Saga
-	err := row.Scan(&s.ID, &s.Order.ID, &s.State, &s.DemoFailure, &s.Reason, &s.Order.ProductID, &s.Order.Quantity, &s.Order.AmountCents, &s.Order.Status)
+	err := row.Scan(&s.ID, &s.Order.ID, &s.State, &s.DemoFailure, &s.Reason, &s.PaymentFirst, &s.Order.ProductID, &s.Order.Quantity, &s.Order.AmountCents, &s.Order.Status)
 	s.Order.Owner = "order-service"
 	if errors.Is(err, sql.ErrNoRows) {
 		err = domain.ErrNotFound
@@ -35,7 +39,7 @@ func scanSaga(row *sql.Row) (domain.Saga, error) {
 	return s, err
 }
 
-const selectSaga = `SELECT s.id,s.order_id,s.state,s.demo_failure,s.reason,o.product_id,o.quantity,o.amount_cents,o.status FROM sagas s JOIN orders o ON o.id=s.order_id `
+const selectSaga = `SELECT s.id,s.order_id,s.state,s.demo_failure,s.reason,s.payment_first,o.product_id,o.quantity,o.amount_cents,o.status FROM sagas s JOIN orders o ON o.id=s.order_id `
 
 func (r *SagaStore) Lock(ctx context.Context, tx *sql.Tx, id string) (domain.Saga, error) {
 	return scanSaga(tx.QueryRowContext(ctx, selectSaga+`WHERE s.id=$1 FOR UPDATE OF s`, id))

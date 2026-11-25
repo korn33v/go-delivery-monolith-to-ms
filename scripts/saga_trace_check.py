@@ -7,7 +7,7 @@ import urllib.error
 import urllib.request
 
 request = urllib.request.Request("http://localhost:8080/api/v1/orders",
-    data=json.dumps({"product_id": 2, "quantity": 1}).encode(),
+    data=json.dumps({"product_id": 1, "quantity": 1, "demo_failure": "payment"}).encode(),
     headers={"Content-Type": "application/json"})
 with urllib.request.urlopen(request, timeout=10) as response:
     order = json.load(response)

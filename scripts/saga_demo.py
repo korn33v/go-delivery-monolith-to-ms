@@ -13,7 +13,7 @@ import urllib.request
 ROOT = Path(__file__).resolve().parents[1]
 COMPOSE = ["docker", "compose", "-f", str(ROOT / "compose.saga.yaml")]
 API = os.getenv("SAGA_API", "http://localhost:8080")
-EXECUTOR = {"ChargePayment": "Payment", "ReserveStock": "Stock", "RefundPayment": "Payment"}
+EXECUTOR = {"ChargePayment": "Payment", "ReserveStock": "Stock", "ReleaseStock": "Stock"}
 
 
 def command(args, **kwargs):
@@ -72,30 +72,31 @@ def snapshot(order):
 
 
 def verify(order, scenario):
-    state = {"happy": "COMPLETED", "payment-failed": "CANCELLED", "compensation": "CANCELLED", "refund-failed": "COMPENSATION_FAILED"}[scenario]
+    state = "COMPLETED" if scenario == "happy" else "CANCELLED"
     wait_for(state, lambda: http("/api/v1/orders/" + order["id"]), lambda o: o["saga_state"] == state)
     result = snapshot(order)
     expected = {
-        "happy": ("CONFIRMED", "CHARGED", 1, 0, "RESERVED", ["PaymentCharged", "StockReserved"]),
-        "payment-failed": ("CANCELLED", "DECLINED", 0, 0, None, ["PaymentFailed"]),
-        "compensation": ("CANCELLED", "REFUNDED", 1, 1, "REJECTED", ["PaymentCharged", "StockReservationFailed", "PaymentRefunded"]),
-        "refund-failed": ("PENDING", "REFUND_FAILED", 1, 0, "REJECTED", ["PaymentCharged", "StockReservationFailed", "PaymentRefundFailed"]),
-    }[scenario]
-    status, payment, charges, refunds, stock, events = expected
+        "happy": ("CONFIRMED", "CHARGED", 1, 0, "RESERVED", ["StockReserved", "PaymentCharged"]),
+        "out-of-stock": ("CANCELLED", None, 0, 0, "REJECTED", ["StockReservationFailed"]),
+        "payment-failed": ("CANCELLED", "DECLINED", 0, 0, "RELEASED", ["StockReserved", "PaymentFailed", "StockReleased"]),
+    }
+    status, payment, charges, refunds, stock, events = expected["payment-failed" if scenario == "compensation" else scenario]
     assert result["order"]["status"] == status, result
     assert result["order"]["saga_state"] == state, result
-    assert result["payment"]["state"] == payment, result
-    assert result["payment"]["charges"] == charges and result["payment"]["refunds"] == refunds, result
-    assert (result["stock"]["status"] if result["stock"] else None) == stock, result
+    if payment is None:
+        assert result["payment"] is None, result
+    else:
+        assert result["payment"]["state"] == payment, result
+        assert result["payment"]["charges"] == charges and result["payment"]["refunds"] == refunds, result
+    assert result["stock"]["status"] == stock, result
     decisions = {
         "OrderCreated": ("PENDING", ""),
-        "SagaStarted": ("PAYMENT_PENDING", "ChargePayment"),
-        "PaymentCharged": ("STOCK_PENDING", "ReserveStock"),
-        "PaymentFailed": ("CANCELLED", ""),
-        "StockReserved": ("COMPLETED", ""),
-        "StockReservationFailed": ("COMPENSATING", "RefundPayment"),
-        "PaymentRefunded": ("CANCELLED", ""),
-        "PaymentRefundFailed": ("COMPENSATION_FAILED", ""),
+        "SagaStarted": ("STOCK_PENDING", "ReserveStock"),
+        "StockReserved": ("PAYMENT_PENDING", "ChargePayment"),
+        "StockReservationFailed": ("CANCELLED", ""),
+        "PaymentCharged": ("COMPLETED", ""),
+        "PaymentFailed": ("COMPENSATING", "ReleaseStock"),
+        "StockReleased": ("CANCELLED", ""),
     }
     history = [(h["message_type"], h["state"], h["next_command"]) for h in result["history"]]
     assert history == [(event, *decisions[event]) for event in ["OrderCreated", "SagaStarted", *events]], history
@@ -106,13 +107,11 @@ def verify(order, scenario):
 
 
 def run_scenario(scenario):
-    body = {"product_id": 2 if scenario in ("compensation", "refund-failed") else 1, "quantity": 1}
-    if scenario == "payment-failed":
+    body = {"product_id": 2 if scenario == "out-of-stock" else 1, "quantity": 1}
+    if scenario in ("payment-failed", "compensation"):
         body["demo_failure"] = "payment"
-    if scenario == "refund-failed":
-        body["demo_failure"] = "refund"
     order = http("/api/v1/orders", body)
-    assert (order["status"], order["saga_state"]) == ("PENDING", "PAYMENT_PENDING"), order
+    assert (order["status"], order["saga_state"]) == ("PENDING", "STOCK_PENDING"), order
     print(f"\n{scenario}: order_id={order['id']} saga_id={order['saga_id']}", flush=True)
     print(f"HTTP 202: status={order['status']} saga_state={order['saga_state']}", flush=True)
     result = verify(order, scenario)
@@ -132,7 +131,12 @@ def replay(database, table, order, kind, topic, use_response=False, new_id=False
         where = f"saga_id='{order['saga_id']}'"
     if table != "stock_receipts":
         where += f" AND message_type='{kind}'"
-    message = json.loads(sql(database, f"SELECT {column} FROM {table} WHERE {where}"))
+    if kind == "ReleaseStock" and not use_response:
+        message = json.loads(sql("orders", f"SELECT payload FROM outbox_messages WHERE id='{order['saga_id']}:ReleaseStock'"))
+    else:
+        if kind == "ReleaseStock":
+            column = "release_response"
+        message = json.loads(sql(database, f"SELECT {column} FROM {table} WHERE {where}"))
     if new_id:
         message["event_id"] += ":redelivery"
     # Publishing a response targets Order, whose receipt tracks that event type.
@@ -158,23 +162,23 @@ def duplicate():
     replay("stock", "stock_receipts", order, "ReserveStock", "saga.events.v1", use_response=True, new_id=True)
     after = verify(order, "happy")
     assert before == after, "duplicate changed business data or transition history"
-    refunded, before = run_scenario("compensation")
-    replay("payments", "payment_receipts", refunded, "RefundPayment", "saga.payment.commands.v1", new_id=True)
-    # Await the published duplicate result as well, before checking final data.
-    replay("payments", "payment_receipts", refunded, "RefundPayment", "saga.events.v1", use_response=True)
-    assert before == verify(refunded, "compensation"), "duplicate changed refund"
-    print("SUCCESS duplicate: charges=1, refunds=1; history unchanged", flush=True)
+    released, before = run_scenario("compensation")
+    replay("stock", "stock_receipts", released, "ReleaseStock", "saga.stock.commands.v1", new_id=True)
+    replay("stock", "stock_receipts", released, "ReserveStock", "saga.stock.commands.v1", new_id=True)
+    replay("stock", "stock_receipts", released, "ReleaseStock", "saga.events.v1", use_response=True)
+    assert before == verify(released, "compensation"), "duplicate changed reservation release"
+    print("SUCCESS duplicate: at most one charge and one release; history unchanged", flush=True)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("scenario", choices=["happy", "payment-failed", "compensation", "duplicate", "refund-failed", "all"])
+    parser.add_argument("scenario", choices=["happy", "out-of-stock", "payment-failed", "compensation", "duplicate", "all"])
     parser.add_argument("--no-start", action="store_true", help="Use already started Compose services")
     args = parser.parse_args()
     if not args.no_start:
         subprocess.run(COMPOSE + ["up", "-d", "--build", "--wait", "--wait-timeout", "240"], cwd=ROOT, check=True)
     if args.scenario == "all":
-        for scenario in ("happy", "payment-failed", "compensation", "refund-failed"):
+        for scenario in ("happy", "out-of-stock", "payment-failed"):
             run_scenario(scenario)
         duplicate()
     elif args.scenario == "duplicate":

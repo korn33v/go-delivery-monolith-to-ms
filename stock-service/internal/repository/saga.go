@@ -71,6 +71,50 @@ func (r *SagaStore) Save(ctx context.Context, tx *sql.Tx, p domain.Product, m, e
 	return err
 }
 
+// Release runs after Lock has acquired the product row in this transaction.
+func (r *SagaStore) Release(ctx context.Context, tx *sql.Tx, p domain.Product, m sagacontract.Message) (sagacontract.Message, bool, error) {
+	var request, cached []byte
+	var status string
+	err := tx.QueryRowContext(ctx, `SELECT request,status,release_response FROM stock_receipts WHERE order_id=$1 FOR UPDATE`, m.OrderID).
+		Scan(&request, &status, &cached)
+	if errors.Is(err, sql.ErrNoRows) {
+		return sagacontract.Message{}, false, messageerror.Permanent(errors.New("reservation not found"))
+	}
+	if err != nil {
+		return sagacontract.Message{}, false, err
+	}
+
+	var original, event sagacontract.Message
+	if err = json.Unmarshal(request, &original); err != nil {
+		return event, false, err
+	}
+	if original.SagaID != m.SagaID || original.Data != m.Data {
+		return event, false, messageerror.Permanent(errors.New("release does not match reservation"))
+	}
+	switch status {
+	case "RELEASED":
+		if err = json.Unmarshal(cached, &event); err != nil {
+			return event, true, err
+		}
+		_, err = tx.ExecContext(ctx, `UPDATE stock_receipts SET deliveries=deliveries+1 WHERE order_id=$1`, m.OrderID)
+		return event, true, err
+	case "RESERVED":
+		event = sagacontract.Reply(m, sagacontract.StockReleased, "")
+	default:
+		return event, false, messageerror.Permanent(errors.New("reservation was rejected"))
+	}
+
+	response, err := json.Marshal(event)
+	if err != nil {
+		return event, false, err
+	}
+	if _, err = tx.ExecContext(ctx, `UPDATE products SET available=$2 WHERE id=$1`, p.ID, p.Available+original.Data.Quantity); err != nil {
+		return event, false, err
+	}
+	_, err = tx.ExecContext(ctx, `UPDATE stock_receipts SET status='RELEASED',release_response=$2 WHERE order_id=$1`, m.OrderID, string(response))
+	return event, false, err
+}
+
 // Keep the existing Stock HTTP API usable in Saga mode too.
 func (r *SagaStore) Get(id int) (domain.Product, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)

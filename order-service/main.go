@@ -81,7 +81,7 @@ func run() error {
 }
 
 func runSaga(ctx context.Context, cfg *config.Config, t *observability.Telemetry) error {
-	db, err := postgres.Open(ctx, cfg.String("DATABASE_URL", "postgres://orders:orders_demo@localhost:15432/orders?sslmode=disable"), repository.SagaSchema, outbox.Schema, deadletter.Schema)
+	db, err := postgres.Open(ctx, cfg.String("DATABASE_URL", "postgres://orders:orders_demo@localhost:15432/orders?sslmode=disable"), repository.SagaSchema, outbox.Schema, deadletter.Schema, repository.PaymentOrderSchema)
 	if err != nil {
 		return err
 	}

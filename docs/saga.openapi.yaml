@@ -27,10 +27,10 @@ paths:
                 demo_failure:
                   type: string
                   enum: [payment, refund]
-                  description: Only accepted when SAGA_DEMO_FAILURES=true
+                  description: Accepted when SAGA_DEMO_FAILURES=true. The refund scenario applies to payment-first orders.
       responses:
         '202':
-          description: Order and ChargePayment Outbox intent committed atomically; asynchronous process is in progress
+          description: Order and ReserveStock Outbox intent committed atomically. Processing continues asynchronously.
           content:
             application/json:
               schema: {$ref: '#/components/schemas/Order'}

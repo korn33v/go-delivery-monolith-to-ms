@@ -53,7 +53,7 @@ smoke3:
 smoke4:
 	go run ./cmd/smoke -stage=4 -require-trace
 
-.PHONY: saga-up saga-down saga-reset saga-logs saga-demo-happy saga-demo-payment-failed saga-demo-compensation saga-demo-duplicate saga-demo-refund-failed saga-e2e saga-acceptance saga-integration saga-zip
+.PHONY: saga-up saga-down saga-reset saga-logs saga-demo-happy saga-demo-payment-failed saga-demo-compensation saga-demo-duplicate saga-demo-out-of-stock saga-e2e saga-acceptance saga-integration saga-zip
 saga-up:
 	docker compose -f compose.saga.yaml up -d --build --wait --wait-timeout 240
 saga-down:
@@ -71,8 +71,8 @@ saga-demo-compensation:
 	python3 scripts/saga_demo.py compensation
 saga-demo-duplicate:
 	python3 scripts/saga_demo.py duplicate
-saga-demo-refund-failed:
-	python3 scripts/saga_demo.py refund-failed
+saga-demo-out-of-stock:
+	python3 scripts/saga_demo.py out-of-stock
 saga-e2e:
 	python3 scripts/saga_demo.py all
 	python3 scripts/saga_reliability.py all --no-start
@@ -82,9 +82,9 @@ saga-e2e:
 saga-trace-check:
 	python3 scripts/saga_trace_check.py
 saga-acceptance:
-	go test ./order-service/internal/domain ./payment-service/internal/domain ./stock-service/internal/domain
+	go test -tags=saga_assignment ./order-service/internal/domain ./payment-service/internal/domain ./stock-service/internal/domain
 saga-integration:
-	go test -race -tags=saga_integration ./internal/outbox ./internal/deadletter ./order-service/internal/usecase ./payment-service/internal/usecase ./stock-service/internal/usecase
+	go test -race -tags=saga_integration,saga_assignment ./internal/outbox ./internal/deadletter ./order-service/internal/usecase ./payment-service/internal/usecase ./stock-service/internal/usecase
 saga-zip:
 	python3 scripts/package_saga.py
 

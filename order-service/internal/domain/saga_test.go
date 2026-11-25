@@ -1,5 +1,3 @@
-//go:build !saga_assignment
-
 package domain
 
 import (
@@ -7,15 +5,15 @@ import (
 	"testing"
 )
 
-func TestSagaStartsPayment(t *testing.T) {
-	s := Saga{State: Pending, Order: Order{Status: "PENDING"}}
+func TestPaymentFirstSagaStartsPayment(t *testing.T) {
+	s := Saga{PaymentFirst: true, State: Pending, Order: Order{Status: "PENDING"}}
 	next, err := s.Start()
 	if err != nil || next != "ChargePayment" || s.State != PaymentPending || s.Order.Status != "PENDING" {
 		t.Fatalf("start: saga=%+v command=%q err=%v", s, next, err)
 	}
 }
 
-func TestSagaBusinessOutcomes(t *testing.T) {
+func TestPaymentFirstSagaBusinessOutcomes(t *testing.T) {
 	type event struct {
 		kind, reason, nextCommand string
 	}
@@ -35,7 +33,7 @@ func TestSagaBusinessOutcomes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := Saga{State: Pending, Order: Order{Status: "PENDING"}}
+			s := Saga{PaymentFirst: true, State: Pending, Order: Order{Status: "PENDING"}}
 			command, err := s.Start()
 			if err != nil || command != "ChargePayment" {
 				t.Fatalf("start: %q %v", command, err)
@@ -53,8 +51,8 @@ func TestSagaBusinessOutcomes(t *testing.T) {
 	}
 }
 
-func TestSagaCommandsAndCompensationPreconditions(t *testing.T) {
-	s := Saga{State: PaymentPending, Order: Order{Status: "PENDING"}}
+func TestPaymentFirstSagaCommandsAndCompensationPreconditions(t *testing.T) {
+	s := Saga{PaymentFirst: true, State: PaymentPending, Order: Order{Status: "PENDING"}}
 	if next, err := s.Apply("PaymentCharged", ""); err != nil || next != "ReserveStock" || s.State != StockPending || s.Order.Status != "PENDING" {
 		t.Fatalf("reserve: %+v %q %v", s, next, err)
 	}
@@ -66,7 +64,7 @@ func TestSagaCommandsAndCompensationPreconditions(t *testing.T) {
 	}
 }
 
-func TestSagaRejectsInvalidAndDuplicateTransitions(t *testing.T) {
+func TestPaymentFirstSagaRejectsInvalidAndDuplicateTransitions(t *testing.T) {
 	states := []SagaState{Pending, PaymentPending, StockPending, Compensating, Completed, Cancelled, CompensationFailed}
 	events := []string{"PaymentCharged", "PaymentFailed", "StockReserved", "StockReservationFailed", "PaymentRefunded", "PaymentRefundFailed", "Unknown"}
 	allowed := map[SagaState]map[string]bool{PaymentPending: {"PaymentCharged": true, "PaymentFailed": true}, StockPending: {"StockReserved": true, "StockReservationFailed": true}, Compensating: {"PaymentRefunded": true, "PaymentRefundFailed": true}}
@@ -75,14 +73,14 @@ func TestSagaRejectsInvalidAndDuplicateTransitions(t *testing.T) {
 			if allowed[state][event] {
 				continue
 			}
-			s := Saga{State: state, Order: Order{Status: "PENDING"}, Reason: "previous_reason"}
+			s := Saga{PaymentFirst: true, State: state, Order: Order{Status: "PENDING"}, Reason: "previous_reason"}
 			before := s
 			if _, err := s.Apply(event, ""); !errors.Is(err, ErrTransition) || s != before {
 				t.Fatalf("%s + %s: want ErrTransition and unchanged saga; got %v, before=%+v after=%+v", state, event, err, before, s)
 			}
 		}
 	}
-	s := Saga{State: PaymentPending}
+	s := Saga{PaymentFirst: true, State: PaymentPending}
 	if _, err := s.Apply("PaymentCharged", ""); err != nil {
 		t.Fatal(err)
 	}

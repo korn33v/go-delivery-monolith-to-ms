@@ -21,12 +21,12 @@ def outbox_recovery():
     print("Outbox: stop Kafka, accept order, restart Order, restore Kafka", flush=True)
     command(COMPOSE + ["stop", "kafka"])
     try:
-        order = http("/api/v1/orders", {"product_id": 2, "quantity": 1})
-        message_id = order["saga_id"] + ":ChargePayment"
+        order = http("/api/v1/orders", {"product_id": 1, "quantity": 1, "demo_failure": "payment"})
+        message_id = order["saga_id"] + ":ReserveStock"
         queued = row("orders", f"SELECT id,published_at FROM outbox_messages WHERE id='{message_id}'")
         assert queued and queued["published_at"] is None, queued
         assert sql("payments", f"SELECT count(*) FROM payments WHERE order_id='{order['id']}'") == "0"
-        assert http("/api/v1/orders/" + order["id"])["saga_state"] == "PAYMENT_PENDING"
+        assert http("/api/v1/orders/" + order["id"])["saga_state"] == "STOCK_PENDING"
         wait_for("failed relay attempt recorded",
                  lambda: int(sql("orders", f"SELECT attempts FROM outbox_messages WHERE id='{message_id}'")),
                  lambda attempts: attempts > 0)
@@ -36,7 +36,7 @@ def outbox_recovery():
         command(COMPOSE + ["start", "kafka"])
         command(COMPOSE + ["up", "-d", "--wait", "--wait-timeout", "120", "order-service"], timeout=180)
     result = verify(order, "compensation")
-    assert result["payment"]["charges"] == 1 and result["payment"]["refunds"] == 1
+    assert result["payment"]["charges"] == 0 and result["stock"]["status"] == "RELEASED"
     wait_for("initial command published after restart",
              lambda: sql("orders", f"SELECT published_at IS NOT NULL FROM outbox_messages WHERE id='{message_id}'"),
              lambda published: published == "t")

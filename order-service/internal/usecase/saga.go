@@ -41,7 +41,7 @@ func (s *Orchestrator) Create(ctx context.Context, request domain.CreateOrder, f
 	if request.ProductID > 2 || (failure != "" && (!s.DemoFailures || (failure != "payment" && failure != "refund"))) {
 		return domain.Saga{}, domain.ErrInvalid
 	}
-	// A tiny local price catalogue; no synchronous reservation before payment.
+	// Local pricing keeps order creation independent of the Stock service.
 	order := domain.Order{ID: contract.ID("order-"), ProductID: request.ProductID, Quantity: request.Quantity, AmountCents: 9999000 * request.Quantity, Status: "PENDING", Owner: "order-service"}
 	saga := domain.Saga{ID: contract.ID("saga-"), Order: order, State: domain.Pending, DemoFailure: failure}
 	tx, err := s.Store.DB.BeginTx(ctx, nil)
